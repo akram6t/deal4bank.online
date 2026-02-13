@@ -2,7 +2,7 @@
 "use client"
 
 import { useState, useEffect } from 'react';
-import { collection, query, onSnapshot, orderBy, doc, updateDoc, addDoc, serverTimestamp } from 'firebase/firestore';
+import { collection, query, onSnapshot, orderBy, doc, updateDoc, addDoc, serverTimestamp, deleteDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { 
   Mail, 
@@ -19,7 +19,10 @@ import {
   Minimize2,
   Sparkles,
   Plus,
-  ArrowRight
+  ArrowRight,
+  Eye as EyeIcon,
+  FileText,
+  Paperclip
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -33,7 +36,9 @@ import { summarizeLongEmail } from '@/ai/flows/summarize-long-email-flow';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { sendEmailAction } from '@/app/actions/email-actions';
+import ReactMarkdown from 'react-markdown';
 import { cn } from "@/lib/utils";
 
 interface Email {
@@ -46,6 +51,7 @@ interface Email {
   read: boolean;
   starred: boolean;
   createdAt: any;
+  attachments?: any[];
 }
 
 export default function EmailPage() {
@@ -100,6 +106,12 @@ export default function EmailPage() {
     await updateDoc(doc(db, 'emails', id), { status: 'trash' });
     if (selectedEmail?.id === id) setSelectedEmail(null);
     toast({ title: "Moved to trash" });
+  };
+
+  const deletePermanently = async (id: string) => {
+    await deleteDoc(doc(db, 'emails', id));
+    if (selectedEmail?.id === id) setSelectedEmail(null);
+    toast({ title: "Email deleted permanently" });
   };
 
   const handleSummarize = async () => {
@@ -166,7 +178,7 @@ export default function EmailPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-headline font-bold">Communications</h1>
-          <p className="text-muted-foreground text-sm">Manage customer inquiries and outreach.</p>
+          <p className="text-muted-foreground text-sm">Manage customer inquiries and outreach with Markdown support.</p>
         </div>
         <div className="flex items-center gap-3">
           <Badge variant="secondary" className="px-3 py-1 bg-primary/10 text-primary border-primary/20">
@@ -177,45 +189,60 @@ export default function EmailPage() {
             <DialogTrigger asChild>
               <Button className="shadow-lg"><Plus className="mr-2 h-4 w-4" /> New Email</Button>
             </DialogTrigger>
-            <DialogContent className="max-w-2xl">
+            <DialogContent className="max-w-4xl">
               <DialogHeader>
-                <DialogTitle>Compose Message</DialogTitle>
+                <DialogTitle>Compose Advanced Message</DialogTitle>
               </DialogHeader>
               <div className="space-y-4 py-4">
-                <div className="grid gap-2">
-                  <Label>To</Label>
-                  <Input 
-                    placeholder="recipient@example.com" 
-                    value={composeData.to}
-                    onChange={e => setComposeData(prev => ({ ...prev, to: e.target.value }))}
-                  />
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label>To</Label>
+                    <Input 
+                      placeholder="recipient@example.com" 
+                      value={composeData.to}
+                      onChange={e => setComposeData(prev => ({ ...prev, to: e.target.value }))}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Subject</Label>
+                    <Input 
+                      placeholder="Enter subject..." 
+                      value={composeData.subject}
+                      onChange={e => setComposeData(prev => ({ ...prev, subject: e.target.value }))}
+                    />
+                  </div>
                 </div>
-                <div className="grid gap-2">
-                  <Label>Subject</Label>
-                  <Input 
-                    placeholder="Enter subject..." 
-                    value={composeData.subject}
-                    onChange={e => setComposeData(prev => ({ ...prev, subject: e.target.value }))}
-                  />
+
+                <Tabs defaultValue="edit" className="w-full">
+                  <TabsList className="grid w-full grid-cols-2 mb-2">
+                    <TabsTrigger value="edit">Write (Markdown)</TabsTrigger>
+                    <TabsTrigger value="preview">Preview</TabsTrigger>
+                  </TabsList>
+                  <TabsContent value="edit" className="space-y-2">
+                    <Textarea 
+                      placeholder="Write your message here using Markdown..." 
+                      className="min-h-[300px] font-mono text-sm"
+                      value={composeData.body}
+                      onChange={e => setComposeData(prev => ({ ...prev, body: e.target.value }))}
+                    />
+                  </TabsContent>
+                  <TabsContent value="preview" className="min-h-[300px] p-4 border rounded-md bg-muted/20 prose prose-sm dark:prose-invert max-w-none">
+                    <ReactMarkdown>{composeData.body || "*No content to preview*"}</ReactMarkdown>
+                  </TabsContent>
+                </Tabs>
+
+                <div className="flex justify-between items-center">
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    onClick={() => handleRefineTone(composeData.body, (val) => setComposeData(p => ({...p, body: val})))}
+                    disabled={refining || !composeData.body}
+                    className="w-fit"
+                  >
+                    <Sparkles className="mr-2 h-3 w-3" /> {refining ? 'Refining...' : 'Optimize with AI'}
+                  </Button>
+                  <p className="text-[10px] text-muted-foreground italic">Tip: Use Markdown for headers, lists, and links.</p>
                 </div>
-                <div className="grid gap-2">
-                  <Label>Message</Label>
-                  <Textarea 
-                    placeholder="Write your message here..." 
-                    className="min-h-[200px]"
-                    value={composeData.body}
-                    onChange={e => setComposeData(prev => ({ ...prev, body: e.target.value }))}
-                  />
-                </div>
-                <Button 
-                  variant="outline" 
-                  size="sm" 
-                  onClick={() => handleRefineTone(composeData.body, (val) => setComposeData(p => ({...p, body: val})))}
-                  disabled={refining || !composeData.body}
-                  className="w-fit"
-                >
-                  <Sparkles className="mr-2 h-3 w-3" /> {refining ? 'Refining...' : 'Optimize with AI'}
-                </Button>
               </div>
               <DialogFooter>
                 <Button variant="outline" onClick={() => setComposeOpen(false)}>Discard</Button>
@@ -282,7 +309,6 @@ export default function EmailPage() {
               />
             </div>
             <Button variant="ghost" size="icon" className="hover:bg-primary/5"><RotateCcw className="h-4 w-4" /></Button>
-            <Button variant="ghost" size="icon"><MoreVertical className="h-4 w-4" /></Button>
           </div>
 
           <ScrollArea className="flex-1">
@@ -319,6 +345,9 @@ export default function EmailPage() {
                   <h4 className="text-sm font-semibold truncate mb-1">{email.subject}</h4>
                   <p className="text-xs text-muted-foreground truncate">{email.body}</p>
                 </div>
+                {email.attachments && email.attachments.length > 0 && (
+                  <Paperclip className="h-3 w-3 text-muted-foreground/40 mt-1" />
+                )}
               </div>
             ))}
             {filteredEmails.length === 0 && (
@@ -332,10 +361,14 @@ export default function EmailPage() {
 
         {/* Preview Panel */}
         {selectedEmail && (
-          <div className="w-[500px] border-l flex flex-col bg-card animate-in slide-in-from-right duration-300">
+          <div className="w-[600px] border-l flex flex-col bg-card animate-in slide-in-from-right duration-300">
             <div className="p-4 border-b flex items-center justify-between bg-muted/10">
               <div className="flex gap-1">
-                <Button variant="ghost" size="icon" onClick={() => moveToTrash(selectedEmail.id)}><Trash2 className="h-4 w-4" /></Button>
+                {activeTab === 'trash' ? (
+                  <Button variant="ghost" size="icon" onClick={() => deletePermanently(selectedEmail.id)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
+                ) : (
+                  <Button variant="ghost" size="icon" onClick={() => moveToTrash(selectedEmail.id)}><Trash2 className="h-4 w-4" /></Button>
+                )}
                 <Button variant="ghost" size="icon"><Archive className="h-4 w-4" /></Button>
                 <Button variant="ghost" size="icon" onClick={() => setSelectedEmail(null)}><Minimize2 className="h-4 w-4" /></Button>
               </div>
@@ -346,7 +379,7 @@ export default function EmailPage() {
               <div className="mb-6">
                 <h2 className="text-2xl font-headline font-bold text-foreground mb-4">{selectedEmail.subject}</h2>
                 <div className="flex items-center gap-3">
-                  <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold shadow-inner">
+                  <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold shadow-inner text-sm">
                     {selectedEmail.from.charAt(0).toUpperCase()}
                   </div>
                   <div className="min-w-0">
@@ -359,30 +392,51 @@ export default function EmailPage() {
                 </div>
               </div>
 
-              {selectedEmail.body.length > 200 && (
-                <div className="mb-6 p-4 bg-primary/5 rounded-xl border border-primary/10 relative overflow-hidden group">
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-[10px] font-bold uppercase tracking-widest text-primary flex items-center">
-                      <Sparkles className="h-3 w-3 mr-1" /> AI Insights
-                    </span>
-                    {!summary && (
-                      <Button variant="link" size="sm" className="h-auto p-0 text-[10px]" onClick={handleSummarize} disabled={summarizing}>
-                        {summarizing ? 'Analyzing...' : 'Generate Summary'}
-                      </Button>
+              <div className="space-y-4">
+                {selectedEmail.body.length > 200 && (
+                  <div className="p-4 bg-primary/5 rounded-xl border border-primary/10 relative overflow-hidden group">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-[10px] font-bold uppercase tracking-widest text-primary flex items-center">
+                        <Sparkles className="h-3 w-3 mr-1" /> AI Summary
+                      </span>
+                      {!summary && (
+                        <Button variant="link" size="sm" className="h-auto p-0 text-[10px]" onClick={handleSummarize} disabled={summarizing}>
+                          {summarizing ? 'Analyzing...' : 'Generate Now'}
+                        </Button>
+                      )}
+                    </div>
+                    {summary ? (
+                      <div className="text-sm italic text-muted-foreground animate-in fade-in leading-relaxed">
+                        "{summary}"
+                      </div>
+                    ) : (
+                      <p className="text-[10px] text-muted-foreground">Lengthy message. Generate summary for quick reading.</p>
                     )}
                   </div>
-                  {summary ? (
-                    <div className="text-sm italic text-muted-foreground animate-in fade-in leading-relaxed">
-                      "{summary}"
-                    </div>
-                  ) : (
-                    <p className="text-[10px] text-muted-foreground">Lengthy message detected. Click to summarize.</p>
-                  )}
-                </div>
-              )}
+                )}
 
-              <div className="text-sm leading-relaxed whitespace-pre-wrap text-foreground/90 border-t pt-6">
-                {selectedEmail.body}
+                <div className="prose prose-sm dark:prose-invert max-w-none border-t pt-6 text-foreground/90 leading-relaxed">
+                  <ReactMarkdown>{selectedEmail.body}</ReactMarkdown>
+                </div>
+
+                {selectedEmail.attachments && selectedEmail.attachments.length > 0 && (
+                  <div className="mt-8 border-t pt-4">
+                    <h5 className="text-xs font-bold text-muted-foreground mb-3 uppercase tracking-wider flex items-center">
+                      <Paperclip className="h-3 w-3 mr-2" /> Attachments ({selectedEmail.attachments.length})
+                    </h5>
+                    <div className="grid grid-cols-2 gap-3">
+                      {selectedEmail.attachments.map((file, i) => (
+                        <div key={i} className="flex items-center gap-2 p-2 rounded-lg border bg-muted/20 hover:bg-muted/40 transition-colors cursor-pointer group">
+                          <FileText className="h-8 w-8 text-primary/60 group-hover:text-primary transition-colors" />
+                          <div className="min-w-0">
+                            <p className="text-[11px] font-bold truncate">{file.filename}</p>
+                            <p className="text-[9px] text-muted-foreground uppercase">{file.content_type?.split('/')[1] || 'FILE'}</p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
             </ScrollArea>
 
@@ -391,18 +445,30 @@ export default function EmailPage() {
                 <DialogTrigger asChild>
                   <Button className="flex-1 shadow-md"><Reply className="mr-2 h-4 w-4" /> Send Reply</Button>
                 </DialogTrigger>
-                <DialogContent className="max-w-2xl">
+                <DialogContent className="max-w-3xl">
                   <DialogHeader>
                     <DialogTitle>Reply to {selectedEmail.from}</DialogTitle>
                   </DialogHeader>
                   <div className="space-y-4 py-4">
-                    <Textarea 
-                      placeholder="Write your response..." 
-                      className="min-h-[200px]"
-                      value={replyBody}
-                      onChange={(e) => setReplyBody(e.target.value)}
-                      disabled={sendingEmail}
-                    />
+                    <Tabs defaultValue="edit">
+                      <TabsList className="grid w-full grid-cols-2 mb-2">
+                        <TabsTrigger value="edit">Write</TabsTrigger>
+                        <TabsTrigger value="preview">Preview</TabsTrigger>
+                      </TabsList>
+                      <TabsContent value="edit">
+                        <Textarea 
+                          placeholder="Write your response... Markdown is supported." 
+                          className="min-h-[250px] font-mono text-sm"
+                          value={replyBody}
+                          onChange={(e) => setReplyBody(e.target.value)}
+                          disabled={sendingEmail}
+                        />
+                      </TabsContent>
+                      <TabsContent value="preview" className="min-h-[250px] p-4 border rounded-md prose prose-sm dark:prose-invert max-w-none overflow-y-auto">
+                        <ReactMarkdown>{replyBody || "*No content to preview*"}</ReactMarkdown>
+                      </TabsContent>
+                    </Tabs>
+                    
                     <div className="flex justify-between items-center">
                       <Button 
                         variant="outline" 
@@ -412,7 +478,7 @@ export default function EmailPage() {
                       >
                         <Sparkles className="mr-2 h-3 w-3" /> {refining ? 'Refining...' : 'Refine Tone'}
                       </Button>
-                      <span className="text-[10px] text-muted-foreground">AI can help you sound more professional</span>
+                      <span className="text-[10px] text-muted-foreground italic">Use #, -, and [] for formatting</span>
                     </div>
                   </div>
                   <DialogFooter>

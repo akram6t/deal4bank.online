@@ -277,7 +277,7 @@ export default function EmailPage() {
           </DialogTrigger>
           <DialogContent className="max-w-4xl p-0 overflow-hidden border-none shadow-2xl rounded-xl">
             <div className="bg-slate-900 text-white flex items-center justify-between px-4 py-3">
-              <h3 className="text-sm font-bold">New Message</h3>
+              <DialogTitle className="text-sm font-bold">New Message</DialogTitle>
               <div className="flex items-center gap-2 opacity-70">
                 <Minus className="h-4 w-4 cursor-pointer hover:opacity-100" />
                 <Maximize2 className="h-3.5 w-3.5 cursor-pointer hover:opacity-100" />

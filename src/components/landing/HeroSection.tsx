@@ -92,16 +92,16 @@ export default function HeroSection({ openedTab, onTabChange }: HeroSectionProps
                           </div>
                           <div className="text-sm text-gray-600 dark:text-gray-300">
                             {tab.id === 'Loan' && (
-                              <span>Interest: <span className="text-blue-600 dark:text-blue-300 font-semibold">{(item as any).rate}</span> | Tenure: <span className="text-blue-600 font-semibold dark:text-blue-300">{(item as any).tenure}</span> | Amount: <span className="text-blue-600 dark:text-blue-300 font-semibold">{(item as any).amount}</span></span>
+                              <span>Interest: <span className="text-blue-600 dark:text-blue-300 font-semibold">{(item as any).rate}</span> | Tenure: <span className="text-blue-600 font-semibold dark:text-blue-300 font-semibold">{(item as any).tenure}</span> | Amount: <span className="text-blue-600 dark:text-blue-300 font-semibold">{(item as any).amount}</span></span>
                             )}
                             {tab.id === 'Insurance' && (
-                              <span>Coverage: <span className="text-blue-600 dark:text-blue-300 font-semibold">{(item as any).coverage}</span> | Premium: <span className="text-blue-600 dark:text-blue-300 font-semibold">{(item as any).premium}</span> | Features: <span className="text-blue-600 dark:text-blue-300 italic">{(item as any).features}</span></span>
+                              <span>Coverage: <span className="text-blue-600 dark:text-blue-300 font-semibold">{(item as any).coverage}</span> | Premium: <span className="text-blue-600 dark:text-blue-300 font-semibold">{(item as any).premium}</span> | Features: <span className="text-blue-600 dark:text-blue-300">{(item as any).features}</span></span>
                             )}
                             {tab.id === 'Investment' && (
-                              <span>Returns: <span className="text-blue-600 dark:text-blue-300 font-semibold">{(item as any).returns}</span> | Risk: <span className="text-blue-600 dark:text-blue-300 font-semibold">{(item as any).risk}</span> | Features: <span className="text-blue-600 dark:text-blue-300 italic">{(item as any).features}</span></span>
+                              <span>Returns: <span className="text-blue-600 dark:text-blue-300 font-semibold">{(item as any).returns}</span> | Risk: <span className="text-blue-600 dark:text-blue-300 font-semibold">{(item as any).risk}</span> | Features: <span className="text-blue-600 dark:text-blue-300">{(item as any).features}</span></span>
                             )}
                             {tab.id === 'Property' && (
-                              <span>Service: <span className="text-blue-600 dark:text-blue-300 font-semibold">{(item as any).service}</span> | {(item as any).commission ? 'Commission' : 'Fee'}: <span className="text-blue-600 dark:text-blue-300 font-semibold">{(item as any).commission || (item as any).fee}</span> | Features: <span className="text-blue-600 dark:text-blue-300 italic">{(item as any).features}</span></span>
+                              <span>Service: <span className="text-blue-600 dark:text-blue-300 font-semibold">{(item as any).service}</span> | {(item as any).commission ? 'Commission' : 'Fee'}: <span className="text-blue-600 dark:text-blue-300 font-semibold">{(item as any).commission || (item as any).fee}</span> | Features: <span className="text-blue-600 dark:text-blue-300">{(item as any).features}</span></span>
                             )}
                           </div>
                         </div>

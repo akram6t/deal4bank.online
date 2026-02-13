@@ -15,10 +15,8 @@ import {
   Home,
   User,
   Car,
-  Building,
   Building2,
   Landmark,
-  X,
   Settings2,
   Banknote,
   Heart,
@@ -41,6 +39,7 @@ import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Switch } from '@/components/ui/switch';
 import { cn } from "@/lib/utils";
 
 interface ServiceAttribute {
@@ -52,9 +51,10 @@ interface ServiceTab {
   id: string;
   name: string;
   icon: string;
+  showIcon: boolean;
   order: number;
   visible: boolean;
-  attributeKeys: string[]; // Predefined keys for this category
+  attributeKeys: string[];
 }
 
 interface ServiceItem {
@@ -68,18 +68,7 @@ interface ServiceItem {
   attributes: ServiceAttribute[];
 }
 
-const CATEGORY_ICONS = [
-  { name: 'Banknote', icon: Banknote },
-  { name: 'Shield', icon: Shield },
-  { name: 'TrendingUp', icon: TrendingUp },
-  { name: 'Home', icon: Home },
-  { name: 'Landmark', icon: Landmark },
-  { name: 'Briefcase', icon: Briefcase },
-  { name: 'CreditCard', icon: CreditCard },
-  { name: 'Wallet', icon: Wallet },
-];
-
-const ITEM_ICONS = [
+const ALL_ICONS = [
   { name: 'User', icon: User },
   { name: 'Home', icon: Home },
   { name: 'Building2', icon: Building2 },
@@ -94,6 +83,7 @@ const ITEM_ICONS = [
   { name: 'ShoppingCart', icon: ShoppingCart },
   { name: 'Eye', icon: Eye },
   { name: 'Landmark', icon: Landmark },
+  { name: 'Briefcase', icon: Briefcase },
   { name: 'CreditCard', icon: CreditCard },
   { name: 'Wallet', icon: Wallet },
   { name: 'Percent', icon: Percent },
@@ -117,7 +107,12 @@ export default function ServicesPage() {
   useEffect(() => {
     const qTabs = query(collection(db, 'services_tabs'), orderBy('order', 'asc'));
     const unsubTabs = onSnapshot(qTabs, (snapshot) => {
-      const tabList = snapshot.docs.map(doc => ({ id: doc.id, attributeKeys: [], ...doc.data() })) as ServiceTab[];
+      const tabList = snapshot.docs.map(doc => ({ 
+        id: doc.id, 
+        attributeKeys: [], 
+        showIcon: true,
+        ...doc.data() 
+      })) as ServiceTab[];
       setTabs(tabList);
       if (tabList.length > 0 && !activeTabId) setActiveTabId(tabList[0].id);
     });
@@ -136,8 +131,8 @@ export default function ServicesPage() {
 
   const activeTab = tabs.find(t => t.id === activeTabId);
 
-  const getIcon = (name: string, list: {name: string, icon: any}[]) => {
-    const found = list.find(i => i.name === name);
+  const getIcon = (name: string) => {
+    const found = ALL_ICONS.find(i => i.name === name);
     return found ? found.icon : LayoutGrid;
   };
 
@@ -148,6 +143,7 @@ export default function ServicesPage() {
       const data = {
         name: editingTab.name,
         icon: editingTab.icon || 'Landmark',
+        showIcon: editingTab.showIcon ?? true,
         attributeKeys: editingTab.attributeKeys || [],
         order: editingTab.order ?? tabs.length,
         visible: editingTab.visible ?? true
@@ -194,7 +190,6 @@ export default function ServicesPage() {
     }
   };
 
-  // Tab Key Management
   const addTabKey = () => {
     setEditingTab(prev => ({
       ...prev!,
@@ -217,7 +212,6 @@ export default function ServicesPage() {
     });
   };
 
-  // Item Attribute Management (based on active tab keys)
   const updateItemAttributeValue = (label: string, value: string) => {
     setEditingItem(prev => {
       const currentAttrs = prev?.attributes || [];
@@ -241,7 +235,7 @@ export default function ServicesPage() {
           <h1 className="text-3xl font-headline font-bold text-foreground">Services Management</h1>
           <p className="text-muted-foreground mt-1 text-sm">Define category fields and manage bank products.</p>
         </div>
-        <Button onClick={() => { setEditingTab({ name: '', icon: 'Landmark', attributeKeys: ['Interest', 'Tenure', 'Amount'] }); setTabModalOpen(true); }}>
+        <Button onClick={() => { setEditingTab({ name: '', icon: 'Landmark', showIcon: true, attributeKeys: ['Interest', 'Tenure', 'Amount'] }); setTabModalOpen(true); }}>
           <Plus className="mr-2 h-4 w-4" /> Add Category
         </Button>
       </div>
@@ -250,14 +244,14 @@ export default function ServicesPage() {
         <div className="flex flex-wrap items-center justify-between gap-4 mb-8">
           <TabsList className="bg-muted p-1 h-auto flex flex-wrap gap-1">
             {tabs.map((tab) => {
-              const Icon = getIcon(tab.icon, CATEGORY_ICONS);
+              const Icon = getIcon(tab.icon);
               return (
                 <TabsTrigger 
                   key={tab.id} 
                   value={tab.id} 
                   className="px-6 py-2.5 flex items-center gap-2"
                 >
-                  <Icon className="h-4 w-4" />
+                  {tab.showIcon && <Icon className="h-4 w-4" />}
                   {tab.name}
                 </TabsTrigger>
               );
@@ -280,9 +274,9 @@ export default function ServicesPage() {
           <TabsContent key={tab.id} value={tab.id} className="space-y-4">
             <div className="grid gap-4">
               {items.map((item) => {
-                const ItemIcon = getIcon(item.iconName, ITEM_ICONS);
+                const ItemIcon = getIcon(item.iconName);
                 return (
-                  <Card key={item.id} className="hover:border-primary/50 transition-colors group">
+                  <Card key={item.id} className="hover:border-primary/50 transition-colors group bg-card">
                     <CardContent className="p-6 flex flex-col md:flex-row md:items-center justify-between gap-6">
                       <div className="flex items-center gap-5 flex-1">
                         <div className="bg-primary/10 p-4 rounded-2xl">
@@ -354,23 +348,35 @@ export default function ServicesPage() {
                   onChange={e => setEditingTab(p => ({...p!, name: e.target.value}))}
                 />
               </div>
-              <div className="space-y-2">
-                <Label>Category Icon</Label>
-                <Select value={editingTab?.icon} onValueChange={v => setEditingTab(p => ({...p!, icon: v}))}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select icon" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {CATEGORY_ICONS.map(i => (
-                      <SelectItem key={i.name} value={i.name}>
-                        <div className="flex items-center gap-2">
-                          <i.icon className="h-4 w-4" /> {i.name}
-                        </div>
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+              <div className="flex items-center justify-between py-2 border-b">
+                <div className="space-y-0.5">
+                  <Label>Display Icon</Label>
+                  <p className="text-xs text-muted-foreground">Show icon in the tab navigation.</p>
+                </div>
+                <Switch 
+                  checked={editingTab?.showIcon ?? true} 
+                  onCheckedChange={val => setEditingTab(p => ({...p!, showIcon: val}))}
+                />
               </div>
+              {editingTab?.showIcon && (
+                <div className="space-y-2">
+                  <Label>Category Icon</Label>
+                  <Select value={editingTab?.icon} onValueChange={v => setEditingTab(p => ({...p!, icon: v}))}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select icon" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {ALL_ICONS.map(i => (
+                        <SelectItem key={i.name} value={i.name}>
+                          <div className="flex items-center gap-2">
+                            <i.icon className="h-4 w-4" /> {i.name}
+                          </div>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
             </div>
 
             <div className="space-y-3 pt-4 border-t">
@@ -396,9 +402,6 @@ export default function ServicesPage() {
                     </Button>
                   </div>
                 ))}
-                {editingTab?.attributeKeys?.length === 0 && (
-                   <p className="text-center text-xs italic text-muted-foreground py-4 border rounded-lg">No fields defined. Add some fields like 'Rate' or 'Limit'.</p>
-                )}
               </div>
             </div>
           </div>
@@ -432,7 +435,7 @@ export default function ServicesPage() {
                     <SelectValue placeholder="Select icon" />
                   </SelectTrigger>
                   <SelectContent>
-                    {ITEM_ICONS.map(i => (
+                    {ALL_ICONS.map(i => (
                       <SelectItem key={i.name} value={i.name}>
                         <div className="flex items-center gap-2">
                           <i.icon className="h-4 w-4" /> {i.name}
@@ -461,11 +464,6 @@ export default function ServicesPage() {
                   );
                 })}
               </div>
-              {activeTab?.attributeKeys.length === 0 && (
-                <p className="text-xs text-center py-6 text-muted-foreground bg-muted/20 rounded-xl">
-                  No specifications defined for this category. Edit the category to add fields.
-                </p>
-              )}
             </div>
           </div>
           <DialogFooter>

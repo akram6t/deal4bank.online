@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -9,38 +8,40 @@ import { States } from '@/components/landing/States';
 
 /**
  * @fileOverview The main landing page for Deal4Bank.
- * Orchestrates navigation, dynamic service fetching, and the hero application section.
+ * Orchestrates navigation, dynamic data fetching (settings and services), 
+ * and the hero application section.
  */
 
 export default function Home() {
   const [activeTab, setActiveTab] = useState('Loan');
-  const [dynamicServices, setDynamicServices] = useState<any>(null);
+  const [dynamicData, setDynamicData] = useState<{ settings: any, services: any } | null>(null);
 
-  // Fetch dynamic services from the API route
+  // Fetch unified site data (settings + services)
   useEffect(() => {
-    async function loadServices() {
+    async function loadSiteData() {
       try {
-        const res = await fetch('/api/services');
+        const res = await fetch('/api/site-data');
         if (res.ok) {
           const data = await res.json();
-          setDynamicServices(data);
+          setDynamicData(data);
           
-          // If we have dynamic data, ensure we select a valid tab
-          if (data.tabs && data.tabs.length > 0) {
+          // If we have dynamic services, ensure we select a valid tab
+          if (data.services?.tabs && data.services.tabs.length > 0) {
+            const firstTab = data.services.tabs[0];
             // Try to find if 'Loan' exists in dynamic titles
-            const loanTab = data.tabs.find((t: any) => t.title.toLowerCase().includes('loan'));
+            const loanTab = data.services.tabs.find((t: any) => t.title.toLowerCase().includes('loan'));
             if (loanTab) {
               setActiveTab(loanTab.id);
             } else {
-              setActiveTab(data.tabs[0].id);
+              setActiveTab(firstTab.id);
             }
           }
         }
       } catch (err) {
-        console.error("Failed to load dynamic services:", err);
+        console.error("Failed to load dynamic site data:", err);
       }
     }
-    loadServices();
+    loadSiteData();
   }, []);
 
   return (
@@ -55,7 +56,7 @@ export default function Home() {
         <HeroSection 
           openedTab={activeTab} 
           onTabChange={setActiveTab} 
-          servicesData={dynamicServices}
+          servicesData={dynamicData?.services}
         />
       </div>
 

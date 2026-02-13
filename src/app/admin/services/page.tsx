@@ -16,9 +16,22 @@ import {
   User,
   Car,
   Building,
+  Building2,
   Landmark,
   X,
-  Settings2
+  Settings2,
+  Banknote,
+  Heart,
+  Headphones,
+  BarChart3,
+  TrendingUp,
+  TrendingDown,
+  ShoppingCart,
+  Eye,
+  Wallet,
+  Percent,
+  CheckCircle2,
+  AlertCircle
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -56,20 +69,36 @@ interface ServiceItem {
 }
 
 const CATEGORY_ICONS = [
-  { name: 'CreditCard', icon: CreditCard },
+  { name: 'Banknote', icon: Banknote },
   { name: 'Shield', icon: Shield },
-  { name: 'Briefcase', icon: Briefcase },
+  { name: 'TrendingUp', icon: TrendingUp },
   { name: 'Home', icon: Home },
   { name: 'Landmark', icon: Landmark },
+  { name: 'Briefcase', icon: Briefcase },
+  { name: 'CreditCard', icon: CreditCard },
+  { name: 'Wallet', icon: Wallet },
 ];
 
 const ITEM_ICONS = [
   { name: 'User', icon: User },
   { name: 'Home', icon: Home },
-  { name: 'Building', icon: Building },
+  { name: 'Building2', icon: Building2 },
   { name: 'Car', icon: Car },
+  { name: 'Banknote', icon: Banknote },
+  { name: 'Heart', icon: Heart },
+  { name: 'Shield', icon: Shield },
+  { name: 'Headphones', icon: Headphones },
+  { name: 'BarChart3', icon: BarChart3 },
+  { name: 'TrendingUp', icon: TrendingUp },
+  { name: 'TrendingDown', icon: TrendingDown },
+  { name: 'ShoppingCart', icon: ShoppingCart },
+  { name: 'Eye', icon: Eye },
   { name: 'Landmark', icon: Landmark },
   { name: 'CreditCard', icon: CreditCard },
+  { name: 'Wallet', icon: Wallet },
+  { name: 'Percent', icon: Percent },
+  { name: 'CheckCircle2', icon: CheckCircle2 },
+  { name: 'AlertCircle', icon: AlertCircle },
 ];
 
 export default function ServicesPage() {

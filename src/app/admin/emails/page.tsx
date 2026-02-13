@@ -1,7 +1,7 @@
 
 "use client"
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { collection, query, onSnapshot, orderBy, doc, updateDoc, addDoc, serverTimestamp, deleteDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { 
@@ -21,7 +21,30 @@ import {
   ArrowRight,
   FileText,
   Paperclip,
-  Check
+  Check,
+  X,
+  Maximize2,
+  Minus,
+  Type,
+  Bold,
+  Italic,
+  Underline,
+  Palette,
+  AlignLeft,
+  List,
+  ListOrdered,
+  Quote,
+  Strikethrough,
+  Eraser,
+  Undo,
+  Redo,
+  Link2,
+  Smile,
+  HardDrive,
+  Image as ImageIcon,
+  Lock,
+  PenLine,
+  ChevronDown
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -38,6 +61,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { sendEmailAction } from '@/app/actions/email-actions';
 import ReactMarkdown from 'react-markdown';
 import { cn } from "@/lib/utils";
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 
 interface Email {
   id: string;
@@ -89,18 +113,6 @@ const DUMMY_EMAILS: Email[] = [
     starred: true,
     createdAt: { seconds: Date.now() / 1000 - 7200 },
     isDummy: true
-  },
-  {
-    id: 'dummy-4',
-    from: 'Hostinger',
-    to: 'admin@deal4bank.com',
-    subject: 'Your authentication code',
-    body: "Please use the code 882910 to verify your identity. If you didn't request this, please secure your account immediately.",
-    status: 'inbox',
-    read: true,
-    starred: false,
-    createdAt: { seconds: Date.now() / 1000 - 86400 },
-    isDummy: true
   }
 ];
 
@@ -120,8 +132,10 @@ export default function EmailPage() {
   
   const [replyBody, setReplyBody] = useState('');
   const [composeData, setComposeData] = useState({ to: '', subject: '', body: '' });
+  const [showAiPrompt, setShowAiPrompt] = useState(false);
 
   const { toast } = useToast();
+  const bodyRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
     const q = query(collection(db, 'emails'), orderBy('createdAt', 'desc'));
@@ -175,16 +189,6 @@ export default function EmailPage() {
     toast({ title: "Moved to trash" });
   };
 
-  const deletePermanently = async (email: Email) => {
-    if (email.isDummy) {
-      setEmails(prev => prev.filter(e => e.id !== email.id));
-    } else {
-      await deleteDoc(doc(db, 'emails', email.id));
-    }
-    if (selectedEmail?.id === email.id) setSelectedEmail(null);
-    toast({ title: "Email deleted permanently" });
-  };
-
   const handleSummarize = async () => {
     if (!selectedEmail) return;
     setSummarizing(true);
@@ -207,6 +211,7 @@ export default function EmailPage() {
         desiredTone: 'professional, empathetic and clear' 
       });
       setter(result.refinedContent);
+      setShowAiPrompt(false);
     } catch (err) {
       toast({ variant: 'destructive', title: 'AI Error', description: 'Failed to refine tone.' });
     } finally {
@@ -244,51 +249,153 @@ export default function EmailPage() {
     }
   };
 
+  const handleComposeBodyChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    const val = e.target.value;
+    setComposeData(prev => ({ ...prev, body: val }));
+    
+    // Slash command trigger
+    if (val.endsWith('/')) {
+      setShowAiPrompt(true);
+    } else {
+      setShowAiPrompt(false);
+    }
+  };
+
   return (
     <div className="h-[calc(100vh-140px)] flex flex-col space-y-4">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-headline font-bold">Communications</h1>
-          <p className="text-muted-foreground text-sm">Manage your inbox and communications efficiently.</p>
+          <h1 className="text-3xl font-headline font-bold text-foreground">Communications</h1>
+          <p className="text-muted-foreground text-sm">Manage your inbox and client communications.</p>
         </div>
+        
         <Dialog open={composeOpen} onOpenChange={setComposeOpen}>
           <DialogTrigger asChild>
-            <Button className="shadow-md rounded-full px-6"><Plus className="mr-2 h-4 w-4" /> Compose</Button>
+            <Button className="shadow-md rounded-full px-6 bg-primary hover:bg-primary/90">
+              <Plus className="mr-2 h-5 w-5" /> Compose
+            </Button>
           </DialogTrigger>
-          <DialogContent className="max-w-4xl">
-            <DialogHeader><DialogTitle>New Message</DialogTitle></DialogHeader>
-            <div className="space-y-4 py-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label>To</Label>
-                  <Input placeholder="recipient@example.com" value={composeData.to} onChange={e => setComposeData(prev => ({ ...prev, to: e.target.value }))} />
-                </div>
-                <div className="space-y-2">
-                  <Label>Subject</Label>
-                  <Input placeholder="Subject" value={composeData.subject} onChange={e => setComposeData(prev => ({ ...prev, subject: e.target.value }))} />
+          <DialogContent className="max-w-4xl p-0 overflow-hidden border-none shadow-2xl rounded-xl">
+            <div className="bg-slate-900 text-white flex items-center justify-between px-4 py-3">
+              <h3 className="text-sm font-bold">New Message</h3>
+              <div className="flex items-center gap-2 opacity-70">
+                <Minus className="h-4 w-4 cursor-pointer hover:opacity-100" />
+                <Maximize2 className="h-3.5 w-3.5 cursor-pointer hover:opacity-100" />
+                <X className="h-4 w-4 cursor-pointer hover:opacity-100" onClick={() => setComposeOpen(false)} />
+              </div>
+            </div>
+            
+            <div className="flex flex-col bg-white dark:bg-neutral-950">
+              <div className="px-4 py-1 border-b border-muted">
+                <div className="flex items-center gap-3 py-2">
+                  <span className="text-sm text-muted-foreground min-w-[60px]">To</span>
+                  <Input 
+                    placeholder="Recipients" 
+                    variant="ghost"
+                    className="border-none shadow-none h-8 px-0 focus-visible:ring-0 text-sm"
+                    value={composeData.to} 
+                    onChange={e => setComposeData(prev => ({ ...prev, to: e.target.value }))} 
+                  />
                 </div>
               </div>
-              <Tabs defaultValue="edit">
-                <TabsList className="grid grid-cols-2 mb-2">
-                  <TabsTrigger value="edit">Write</TabsTrigger>
-                  <TabsTrigger value="preview">Preview</TabsTrigger>
-                </TabsList>
-                <TabsContent value="edit">
-                  <Textarea className="min-h-[300px] font-mono" value={composeData.body} onChange={e => setComposeData(prev => ({ ...prev, body: e.target.value }))} />
-                </TabsContent>
-                <TabsContent value="preview" className="min-h-[300px] p-4 border rounded-md bg-muted/20 prose prose-sm dark:prose-invert max-w-none">
-                  <ReactMarkdown>{composeData.body || "*No content to preview*"}</ReactMarkdown>
-                </TabsContent>
-              </Tabs>
-              <Button variant="outline" size="sm" onClick={() => handleRefineTone(composeData.body, (v) => setComposeData(p => ({...p, body: v})))} disabled={refining || !composeData.body}>
-                <Sparkles className="mr-2 h-3 w-3" /> {refining ? 'Refining...' : 'Refine with AI'}
-              </Button>
+              <div className="px-4 py-1 border-b border-muted">
+                <Input 
+                  placeholder="Subject" 
+                  variant="ghost"
+                  className="border-none shadow-none h-10 px-0 focus-visible:ring-0 text-base font-medium"
+                  value={composeData.subject} 
+                  onChange={e => setComposeData(prev => ({ ...prev, subject: e.target.value }))} 
+                />
+              </div>
+              
+              <div className="relative">
+                <Textarea 
+                  ref={bodyRef}
+                  placeholder="Press / for Help me write"
+                  className="min-h-[400px] border-none shadow-none focus-visible:ring-0 resize-none p-4 text-base leading-relaxed"
+                  value={composeData.body}
+                  onChange={handleComposeBodyChange}
+                />
+                
+                {showAiPrompt && (
+                  <div className="absolute left-4 top-12 z-50">
+                    <div className="bg-white dark:bg-neutral-900 border rounded-lg shadow-xl p-1 animate-in slide-in-from-top-2 duration-200">
+                      <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        className="w-full justify-start text-xs font-bold text-primary gap-2"
+                        onClick={() => handleRefineTone(composeData.body, (v) => setComposeData(p => ({...p, body: v})))}
+                        disabled={refining}
+                      >
+                        <Sparkles className="h-3 w-3" />
+                        {refining ? 'Refining...' : 'Help me write'}
+                      </Button>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Rich Text Toolbar */}
+              <div className="px-4 py-2 bg-slate-50 dark:bg-neutral-900 border-t flex flex-wrap items-center gap-1">
+                <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground"><Undo className="h-4 w-4" /></Button>
+                <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground"><Redo className="h-4 w-4" /></Button>
+                <div className="h-4 w-px bg-muted mx-1" />
+                <Button variant="ghost" className="h-8 px-2 text-xs font-medium text-muted-foreground gap-1">Sans Serif <ChevronDown className="h-3 w-3" /></Button>
+                <div className="h-4 w-px bg-muted mx-1" />
+                <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground"><Type className="h-4 w-4" /></Button>
+                <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground"><Bold className="h-4 w-4" /></Button>
+                <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground"><Italic className="h-4 w-4" /></Button>
+                <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground"><Underline className="h-4 w-4" /></Button>
+                <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground"><Palette className="h-4 w-4" /></Button>
+                <div className="h-4 w-px bg-muted mx-1" />
+                <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground"><AlignLeft className="h-4 w-4" /></Button>
+                <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground"><ListOrdered className="h-4 w-4" /></Button>
+                <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground"><List className="h-4 w-4" /></Button>
+                <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground"><Quote className="h-4 w-4" /></Button>
+                <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground"><Strikethrough className="h-4 w-4" /></Button>
+                <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground"><Eraser className="h-4 w-4" /></Button>
+              </div>
+
+              {/* Bottom Action Bar */}
+              <div className="px-4 py-3 flex items-center justify-between border-t bg-white dark:bg-neutral-950">
+                <div className="flex items-center gap-2">
+                  <div className="flex">
+                    <Button 
+                      className="rounded-l-full rounded-r-none px-6 h-10 bg-blue-600 hover:bg-blue-700 text-sm font-bold"
+                      onClick={() => handleSend(composeData.to, composeData.subject, composeData.body)}
+                      disabled={sendingEmail || !composeData.to}
+                    >
+                      {sendingEmail ? 'Sending...' : 'Send'}
+                    </Button>
+                    <div className="w-px bg-blue-700 h-10" />
+                    <Button className="rounded-r-full rounded-l-none h-10 w-8 px-0 bg-blue-600 hover:bg-blue-700">
+                      <ChevronDown className="h-4 w-4" />
+                    </Button>
+                  </div>
+                  
+                  <div className="flex items-center gap-1 ml-2">
+                    <Button variant="ghost" size="icon" className="h-9 w-9 rounded-full text-muted-foreground hover:bg-muted/50"><Type className="h-5 w-5" /></Button>
+                    <Button variant="ghost" size="icon" className="h-9 w-9 rounded-full text-muted-foreground hover:bg-muted/50"><Paperclip className="h-5 w-5" /></Button>
+                    <Button variant="ghost" size="icon" className="h-9 w-9 rounded-full text-muted-foreground hover:bg-muted/50"><Link2 className="h-5 w-5" /></Button>
+                    <Button variant="ghost" size="icon" className="h-9 w-9 rounded-full text-muted-foreground hover:bg-muted/50"><Smile className="h-5 w-5" /></Button>
+                    <Button variant="ghost" size="icon" className="h-9 w-9 rounded-full text-muted-foreground hover:bg-muted/50"><HardDrive className="h-5 w-5" /></Button>
+                    <Button variant="ghost" size="icon" className="h-9 w-9 rounded-full text-muted-foreground hover:bg-muted/50"><ImageIcon className="h-5 w-5" /></Button>
+                    <Button variant="ghost" size="icon" className="h-9 w-9 rounded-full text-muted-foreground hover:bg-muted/50"><Lock className="h-5 w-5" /></Button>
+                    <Button variant="ghost" size="icon" className="h-9 w-9 rounded-full text-muted-foreground hover:bg-muted/50"><PenLine className="h-5 w-5" /></Button>
+                    <Button variant="ghost" size="icon" className="h-9 w-9 rounded-full text-muted-foreground hover:bg-muted/50"><MoreVertical className="h-5 w-5" /></Button>
+                  </div>
+                </div>
+                
+                <Button 
+                  variant="ghost" 
+                  size="icon" 
+                  className="h-9 w-9 rounded-full text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+                  onClick={() => setComposeData({ to: '', subject: '', body: '' })}
+                >
+                  <Trash2 className="h-5 w-5" />
+                </Button>
+              </div>
             </div>
-            <DialogFooter>
-              <Button onClick={() => handleSend(composeData.to, composeData.subject, composeData.body)} disabled={sendingEmail || !composeData.to}>
-                {sendingEmail ? 'Sending...' : 'Send'}
-              </Button>
-            </DialogFooter>
           </DialogContent>
         </Dialog>
       </div>

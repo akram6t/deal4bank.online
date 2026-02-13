@@ -1,22 +1,29 @@
 
-"use client"
+'use client';
 
-import { useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState } from 'react';
+import Navbar from '@/components/landing/Navbar';
+import HeroSection from '@/components/landing/HeroSection';
+import Footer from '@/components/landing/Footer';
+import { States } from '@/components/landing/States';
 
 export default function Home() {
-  const router = useRouter();
-
-  useEffect(() => {
-    router.push('/admin/dashboard');
-  }, [router]);
+  const [activeTab, setActiveTab] = useState('Loan');
 
   return (
-    <div className="flex items-center justify-center min-h-screen bg-background">
-      <div className="animate-pulse flex flex-col items-center gap-4">
-        <div className="h-12 w-12 rounded-full border-4 border-primary border-t-transparent animate-spin"></div>
-        <p className="text-muted-foreground font-headline font-medium">Entering Deal4Bank Admin...</p>
+    <main className="min-h-screen bg-blue-50/30 dark:bg-neutral-950 transition-colors duration-200">
+      <Navbar />
+
+      <div className="max-w-7xl mx-auto py-8">
+        <States onLinkClick={(tabId) => setActiveTab(tabId)} />
+        
+        <HeroSection 
+          activeTab={activeTab} 
+          onTabChange={setActiveTab} 
+        />
       </div>
-    </div>
+
+      <Footer />
+    </main>
   );
 }

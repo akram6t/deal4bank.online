@@ -7,7 +7,7 @@ import { cn } from '@/lib/utils';
 import { 
   LayoutDashboard, 
   Building2, 
-  Contact, 
+  ClipboardList, 
   Briefcase, 
   Mail, 
   Settings, 
@@ -28,7 +28,7 @@ import { useAuth } from '@/hooks/use-auth';
 const menuItems = [
   { icon: LayoutDashboard, label: 'Dashboard', href: '/admin/dashboard' },
   { icon: Building2, label: 'Company', href: '/admin/company' },
-  { icon: Contact, label: 'Contacts', href: '/admin/contacts' },
+  { icon: ClipboardList, label: 'Inquiries', href: '/admin/inquiries' },
   { icon: Briefcase, label: 'Services', href: '/admin/services' },
   { icon: Mail, label: 'Emails', href: '/admin/emails' },
   { icon: Settings, label: 'Settings', href: '/admin/settings' },

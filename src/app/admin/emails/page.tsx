@@ -52,7 +52,47 @@ interface Email {
   starred: boolean;
   createdAt: any;
   attachments?: any[];
+  isDummy?: boolean;
 }
+
+const DUMMY_EMAILS: Email[] = [
+  {
+    id: 'dummy-1',
+    from: 'customer.support@bankpartner.com',
+    to: 'admin@deal4bank.com',
+    subject: 'New Loan Partnership Inquiry',
+    body: "Hello Team,\n\nWe are interested in listing our new **Home Loan** products on your platform. We offer competitive rates starting from **8.5%**. \n\nPlease let us know the onboarding process.\n\nBest,\nPartnership Team",
+    status: 'inbox',
+    read: false,
+    starred: true,
+    createdAt: { seconds: Date.now() / 1000 - 3600 },
+    isDummy: true
+  },
+  {
+    id: 'dummy-2',
+    from: 'marketing@fintech-solutions.io',
+    to: 'admin@deal4bank.com',
+    subject: 'Monthly Newsletter: Financial Trends 2024',
+    body: "# Financial Trends 2024\n\nStay ahead of the curve with our latest insights into the Indian lending market.\n\n*   Digital signatures are becoming mandatory.\n*   AI-driven credit scoring is on the rise.\n*   Personal loans are seeing a 20% YoY growth.\n\n[Read more on our blog](https://example.com)",
+    status: 'inbox',
+    read: true,
+    starred: false,
+    createdAt: { seconds: Date.now() / 1000 - 86400 },
+    isDummy: true
+  },
+  {
+    id: 'dummy-3',
+    from: 'admin@deal4bank.com',
+    to: 'rajesh.k@example.com',
+    subject: 'Re: Home Loan Inquiry Update',
+    body: "Dear Rajesh,\n\nYour application for the **SBI Home Loan** is currently under review. We expect an update within 2 working days.\n\nRegards,\nDeal4Bank Admin",
+    status: 'sent',
+    read: true,
+    starred: false,
+    createdAt: { seconds: Date.now() / 1000 - 172800 },
+    isDummy: true
+  }
+];
 
 export default function EmailPage() {
   const [emails, setEmails] = useState<Email[]>([]);
@@ -83,7 +123,15 @@ export default function EmailPage() {
         id: doc.id,
         ...doc.data()
       })) as Email[];
-      setEmails(emailList);
+      
+      if (emailList.length === 0) {
+        setEmails(DUMMY_EMAILS);
+      } else {
+        setEmails(emailList);
+      }
+    }, (error) => {
+      console.error("Firestore error:", error);
+      setEmails(DUMMY_EMAILS);
     });
     return () => unsubscribe();
   }, []);
@@ -94,23 +142,40 @@ export default function EmailPage() {
      e.from.toLowerCase().includes(search.toLowerCase()))
   );
 
-  const toggleStar = async (id: string, starred: boolean) => {
-    await updateDoc(doc(db, 'emails', id), { starred: !starred });
+  const toggleStar = async (email: Email) => {
+    if (email.isDummy) {
+      setEmails(prev => prev.map(e => e.id === email.id ? { ...e, starred: !e.starred } : e));
+      return;
+    }
+    await updateDoc(doc(db, 'emails', email.id), { starred: !email.starred });
   };
 
-  const markRead = async (id: string) => {
-    await updateDoc(doc(db, 'emails', id), { read: true });
+  const markRead = async (email: Email) => {
+    if (email.read) return;
+    if (email.isDummy) {
+      setEmails(prev => prev.map(e => e.id === email.id ? { ...e, read: true } : e));
+      return;
+    }
+    await updateDoc(doc(db, 'emails', email.id), { read: true });
   };
 
-  const moveToTrash = async (id: string) => {
-    await updateDoc(doc(db, 'emails', id), { status: 'trash' });
-    if (selectedEmail?.id === id) setSelectedEmail(null);
+  const moveToTrash = async (email: Email) => {
+    if (email.isDummy) {
+      setEmails(prev => prev.map(e => e.id === email.id ? { ...e, status: 'trash' } : e));
+    } else {
+      await updateDoc(doc(db, 'emails', email.id), { status: 'trash' });
+    }
+    if (selectedEmail?.id === email.id) setSelectedEmail(null);
     toast({ title: "Moved to trash" });
   };
 
-  const deletePermanently = async (id: string) => {
-    await deleteDoc(doc(db, 'emails', id));
-    if (selectedEmail?.id === id) setSelectedEmail(null);
+  const deletePermanently = async (email: Email) => {
+    if (email.isDummy) {
+      setEmails(prev => prev.filter(e => e.id !== email.id));
+    } else {
+      await deleteDoc(doc(db, 'emails', email.id));
+    }
+    if (selectedEmail?.id === email.id) setSelectedEmail(null);
     toast({ title: "Email deleted permanently" });
   };
 
@@ -294,6 +359,12 @@ export default function EmailPage() {
               <Trash2 className="mr-2 h-4 w-4" /> Trash
             </Button>
           </div>
+          {emails.some(e => e.isDummy) && (
+            <div className="mt-auto p-3 bg-yellow-500/10 rounded-lg border border-yellow-500/20">
+              <p className="text-[10px] font-bold text-yellow-600 uppercase tracking-wider mb-1">Demo Mode</p>
+              <p className="text-[10px] text-yellow-700/70">Showing placeholder emails.</p>
+            </div>
+          )}
         </div>
 
         {/* Email List */}
@@ -317,7 +388,7 @@ export default function EmailPage() {
                 key={email.id}
                 onClick={() => {
                   setSelectedEmail(email);
-                  markRead(email.id);
+                  markRead(email);
                   setSummary(null);
                 }}
                 className={cn(
@@ -329,7 +400,7 @@ export default function EmailPage() {
                 <div 
                   onClick={(e) => {
                     e.stopPropagation();
-                    toggleStar(email.id, email.starred);
+                    toggleStar(email);
                   }}
                   className="mt-1"
                 >
@@ -365,9 +436,9 @@ export default function EmailPage() {
             <div className="p-4 border-b flex items-center justify-between bg-muted/10">
               <div className="flex gap-1">
                 {activeTab === 'trash' ? (
-                  <Button variant="ghost" size="icon" onClick={() => deletePermanently(selectedEmail.id)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
+                  <Button variant="ghost" size="icon" onClick={() => deletePermanently(selectedEmail)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
                 ) : (
-                  <Button variant="ghost" size="icon" onClick={() => moveToTrash(selectedEmail.id)}><Trash2 className="h-4 w-4" /></Button>
+                  <Button variant="ghost" size="icon" onClick={() => moveToTrash(selectedEmail)}><Trash2 className="h-4 w-4" /></Button>
                 )}
                 <Button variant="ghost" size="icon"><Archive className="h-4 w-4" /></Button>
                 <Button variant="ghost" size="icon" onClick={() => setSelectedEmail(null)}><Minimize2 className="h-4 w-4" /></Button>

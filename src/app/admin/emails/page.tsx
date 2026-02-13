@@ -1,8 +1,7 @@
-
 "use client"
 
-import { useState, useEffect, useRef } from 'react';
-import { collection, query, onSnapshot, orderBy, doc, updateDoc, addDoc, serverTimestamp, deleteDoc } from 'firebase/firestore';
+import { useState, useEffect } from 'react';
+import { collection, query, onSnapshot, orderBy, doc, updateDoc, addDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { 
   Mail, 
@@ -21,30 +20,24 @@ import {
   ArrowRight,
   FileText,
   Paperclip,
-  Check,
   X,
   Maximize2,
-  Minus,
-  Type,
+  Undo,
+  Redo,
   Bold,
   Italic,
   Underline,
-  Palette,
-  AlignLeft,
   List,
   ListOrdered,
   Quote,
-  Strikethrough,
   Eraser,
-  Undo,
-  Redo,
   Link2,
   Smile,
   HardDrive,
   Image as ImageIcon,
   Lock,
-  PenLine,
-  ChevronDown
+  ChevronDown,
+  Minus
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -54,14 +47,10 @@ import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
 import { refineEmailTone } from '@/ai/flows/refine-email-tone-flow';
 import { summarizeLongEmail } from '@/ai/flows/summarize-long-email-flow';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from '@/components/ui/dialog';
-import { Textarea } from '@/components/ui/textarea';
-import { Label } from '@/components/ui/label';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { sendEmailAction } from '@/app/actions/email-actions';
 import ReactMarkdown from 'react-markdown';
 import { cn } from "@/lib/utils";
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 
 // Tiptap Rich Text Editor Imports
 import { useEditor, EditorContent } from '@tiptap/react';
@@ -133,12 +122,10 @@ export default function EmailPage() {
   const [summary, setSummary] = useState<string | null>(null);
   const [refining, setRefining] = useState(false);
   
-  const [replyOpen, setReplyOpen] = useState(false);
   const [composeOpen, setComposeOpen] = useState(false);
   const [composeState, setComposeState] = useState<'default' | 'minimized' | 'maximized'>('default');
   const [sendingEmail, setSendingEmail] = useState(false);
   
-  const [replyBody, setReplyBody] = useState('');
   const [composeData, setComposeData] = useState({ to: '', subject: '' });
   const [showAiPrompt, setShowAiPrompt] = useState(false);
 
@@ -252,7 +239,7 @@ export default function EmailPage() {
     }
   };
 
-  const handleSend = async (to: string, subject: string, isReply: boolean = false) => {
+  const handleSend = async (to: string, subject: string) => {
     if (!editor) return;
     const bodyText = editor.getText();
     const bodyHtml = editor.getHTML();
@@ -272,14 +259,10 @@ export default function EmailPage() {
         createdAt: serverTimestamp()
       });
 
-      if (isReply) {
-        setReplyOpen(false);
-        setReplyBody('');
-      } else {
-        setComposeOpen(false);
-        setComposeData({ to: '', subject: '' });
-        editor.commands.setContent('');
-      }
+      setComposeOpen(false);
+      setComposeData({ to: '', subject: '' });
+      editor.commands.setContent('');
+      
       toast({ title: "Email Sent", description: `Message delivered to ${to}` });
     } catch (err: any) {
       toast({ variant: 'destructive', title: "Send Failed", description: err.message });
@@ -484,7 +467,7 @@ export default function EmailPage() {
             )}
           </div>
         </div>
-      </ScrollArea>
+      </Tabs>
 
       {/* Gmail-style Compose Modal */}
       {composeOpen && (

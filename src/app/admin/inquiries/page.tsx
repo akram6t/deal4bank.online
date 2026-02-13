@@ -1,4 +1,3 @@
-
 "use client"
 
 import { useState, useEffect } from 'react';
@@ -13,7 +12,7 @@ import {
   MapPin, 
   CheckCircle2, 
   Clock,
-  ExternalLink
+  Briefcase
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -39,7 +38,50 @@ interface Inquiry {
   service: string;
   status: 'pending' | 'contacted' | 'closed';
   createdAt: any;
+  isDummy?: boolean;
 }
+
+const DUMMY_INQUIRIES: Inquiry[] = [
+  {
+    id: 'dummy-1',
+    fullName: 'Rajesh Kumar',
+    email: 'rajesh.k@example.com',
+    phone: '9876543210',
+    city: 'Mumbai',
+    state: 'Maharashtra',
+    pincode: '400001',
+    service: 'Home Loan (Loans)',
+    status: 'pending',
+    createdAt: { seconds: Date.now() / 1000 - 3600 },
+    isDummy: true
+  },
+  {
+    id: 'dummy-2',
+    fullName: 'Priya Sharma',
+    email: 'priya.s@example.com',
+    phone: '9123456789',
+    city: 'Delhi',
+    state: 'Delhi',
+    pincode: '110001',
+    service: 'Health Insurance (Insurance)',
+    status: 'contacted',
+    createdAt: { seconds: Date.now() / 1000 - 86400 },
+    isDummy: true
+  },
+  {
+    id: 'dummy-3',
+    fullName: 'Amit Patel',
+    email: 'amit.p@example.com',
+    phone: '9988776655',
+    city: 'Ahmedabad',
+    state: 'Gujarat',
+    pincode: '380001',
+    service: 'Mutual Funds (Investment)',
+    status: 'closed',
+    createdAt: { seconds: Date.now() / 1000 - 172800 },
+    isDummy: true
+  }
+];
 
 export default function InquiriesPage() {
   const [inquiries, setInquiries] = useState<Inquiry[]>([]);
@@ -53,13 +95,28 @@ export default function InquiriesPage() {
         id: doc.id,
         ...doc.data()
       })) as Inquiry[];
-      setInquiries(list);
+      
+      // If Firestore is empty, we show dummy data for the prototype
+      if (list.length === 0) {
+        setInquiries(DUMMY_INQUIRIES);
+      } else {
+        setInquiries(list);
+      }
+      setLoading(false);
+    }, (error) => {
+      console.error("Firestore Listen Error:", error);
+      setInquiries(DUMMY_INQUIRIES); // Fallback to dummy on error
       setLoading(false);
     });
     return () => unsubscribe();
   }, []);
 
-  const updateStatus = async (id: string, status: Inquiry['status']) => {
+  const updateStatus = async (id: string, status: Inquiry['status'], isDummy?: boolean) => {
+    if (isDummy) {
+      setInquiries(prev => prev.map(item => item.id === id ? { ...item, status } : item));
+      toast({ title: "Status updated (Demo Mode)" });
+      return;
+    }
     try {
       await updateDoc(doc(db, 'inquiries', id), { status });
       toast({ title: "Status updated" });
@@ -68,7 +125,12 @@ export default function InquiriesPage() {
     }
   };
 
-  const deleteInquiry = async (id: string) => {
+  const deleteInquiry = async (id: string, isDummy?: boolean) => {
+    if (isDummy) {
+      setInquiries(prev => prev.filter(item => item.id !== id));
+      toast({ title: "Inquiry deleted (Demo Mode)" });
+      return;
+    }
     try {
       await deleteDoc(doc(db, 'inquiries', id));
       toast({ title: "Inquiry deleted" });
@@ -87,14 +149,21 @@ export default function InquiriesPage() {
 
   return (
     <div className="space-y-8 animate-in fade-in duration-500">
-      <div className="flex justify-between items-center">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h1 className="text-3xl font-headline font-bold">Service Inquiries</h1>
           <p className="text-muted-foreground mt-1">Manage applications received from the public form.</p>
         </div>
-        <Badge variant="outline" className="px-4 py-1">
-          {inquiries.length} Total Applications
-        </Badge>
+        <div className="flex items-center gap-2">
+          <Badge variant="outline" className="px-4 py-1">
+            {inquiries.length} Total Applications
+          </Badge>
+          {inquiries.some(i => i.isDummy) && (
+            <Badge variant="secondary" className="bg-yellow-100 text-yellow-800 border-yellow-200">
+              Demo Data Mode
+            </Badge>
+          )}
+        </div>
       </div>
 
       <div className="grid gap-4">
@@ -109,7 +178,7 @@ export default function InquiriesPage() {
           </Card>
         ) : (
           inquiries.map((item) => (
-            <Card key={item.id} className="hover:shadow-md transition-all group overflow-hidden">
+            <Card key={item.id} className="hover:shadow-md transition-all group overflow-hidden border-border bg-card">
               <CardContent className="p-0">
                 <div className="flex flex-col md:flex-row">
                   <div className={cn(
@@ -120,12 +189,13 @@ export default function InquiriesPage() {
                   <div className="flex-1 p-6 flex flex-col md:flex-row md:items-center justify-between gap-6">
                     <div className="space-y-3 flex-1 min-w-0">
                       <div className="flex items-center gap-3 flex-wrap">
-                        <h3 className="text-lg font-bold truncate">{item.fullName}</h3>
+                        <h3 className="text-lg font-bold truncate text-foreground">{item.fullName}</h3>
                         {getStatusBadge(item.status)}
                         <span className="text-xs text-muted-foreground flex items-center">
                           <Clock className="h-3 w-3 mr-1" />
                           {item.createdAt?.seconds ? format(new Date(item.createdAt.seconds * 1000), 'MMM d, h:mm a') : 'Recent'}
                         </span>
+                        {item.isDummy && <Badge variant="outline" className="text-[10px] py-0 px-1.5 opacity-50">Demo</Badge>}
                       </div>
                       
                       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-x-6 gap-y-2 text-sm text-muted-foreground">
@@ -157,16 +227,16 @@ export default function InquiriesPage() {
                           <Button variant="ghost" size="icon"><MoreVertical className="h-4 w-4" /></Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
-                          <DropdownMenuItem onClick={() => updateStatus(item.id, 'contacted')}>
+                          <DropdownMenuItem onClick={() => updateStatus(item.id, 'contacted', item.isDummy)}>
                             <CheckCircle2 className="h-4 w-4 mr-2 text-blue-500" /> Mark Contacted
                           </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => updateStatus(item.id, 'closed')}>
+                          <DropdownMenuItem onClick={() => updateStatus(item.id, 'closed', item.isDummy)}>
                             <CheckCircle2 className="h-4 w-4 mr-2 text-green-500" /> Mark Closed
                           </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => updateStatus(item.id, 'pending')}>
+                          <DropdownMenuItem onClick={() => updateStatus(item.id, 'pending', item.isDummy)}>
                             <Clock className="h-4 w-4 mr-2 text-orange-500" /> Mark Pending
                           </DropdownMenuItem>
-                          <DropdownMenuItem className="text-destructive" onClick={() => deleteInquiry(item.id)}>
+                          <DropdownMenuItem className="text-destructive" onClick={() => deleteInquiry(item.id, item.isDummy)}>
                             <Trash2 className="h-4 w-4 mr-2" /> Delete Inquiry
                           </DropdownMenuItem>
                         </DropdownMenuContent>

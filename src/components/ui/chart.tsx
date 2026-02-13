@@ -1,3 +1,4 @@
+
 "use client"
 
 import * as React from "react"
@@ -43,8 +44,17 @@ const ChartContainer = React.forwardRef<
     >["children"]
   }
 >(({ id, className, children, config, ...props }, ref) => {
+  const [mounted, setMounted] = React.useState(false)
+  React.useEffect(() => {
+    setMounted(true)
+  }, [])
+
   const uniqueId = React.useId()
   const chartId = `chart-${id || uniqueId.replace(/:/g, "")}`
+
+  if (!mounted) {
+    return <div ref={ref} className={cn("flex aspect-video justify-center text-xs", className)} {...props} />
+  }
 
   return (
     <ChartContext.Provider value={{ config }}>

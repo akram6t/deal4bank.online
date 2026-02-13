@@ -1,3 +1,4 @@
+
 "use client"
 
 import { useState, useEffect } from 'react';
@@ -27,8 +28,10 @@ interface Notification {
 export function NotificationBell() {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
+  const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
+    setMounted(true);
     const q = query(
       collection(db, 'notifications'),
       orderBy('createdAt', 'desc'),
@@ -67,6 +70,14 @@ export function NotificationBell() {
       default: return <AlertCircle className="h-4 w-4 text-orange-500" />;
     }
   };
+
+  if (!mounted) {
+    return (
+      <Button variant="ghost" size="icon" className="relative h-10 w-10 rounded-full">
+        <Bell className="h-5 w-5" />
+      </Button>
+    );
+  }
 
   return (
     <Popover>

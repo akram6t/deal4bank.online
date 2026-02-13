@@ -1,4 +1,3 @@
-
 "use client"
 
 import { useState, useEffect } from 'react';
@@ -34,6 +33,8 @@ import { refineEmailTone } from '@/ai/flows/refine-email-tone-flow';
 import { summarizeLongEmail } from '@/ai/flows/summarize-long-email-flow';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
+import { sendEmailAction } from '@/app/actions/email-actions';
+import { cn } from "@/lib/utils";
 
 interface Email {
   id: string;
@@ -57,6 +58,7 @@ export default function EmailPage() {
   const [replyOpen, setReplyOpen] = useState(false);
   const [replyBody, setReplyBody] = useState('');
   const [refining, setRefining] = useState(false);
+  const [sendingEmail, setSendingEmail] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -68,7 +70,6 @@ export default function EmailPage() {
       })) as Email[];
       setEmails(emailList);
       
-      // Play sound for new inbox emails
       snapshot.docChanges().forEach((change) => {
         if (change.type === "added" && change.doc.data().status === 'inbox') {
           playNotificationSound();
@@ -134,19 +135,40 @@ export default function EmailPage() {
 
   const handleSendReply = async () => {
     if (!selectedEmail || !replyBody) return;
-    await addDoc(collection(db, 'emails'), {
-      from: 'admin@deal4bank.com',
-      to: selectedEmail.from,
-      subject: `Re: ${selectedEmail.subject}`,
-      body: replyBody,
-      status: 'sent',
-      read: true,
-      starred: false,
-      createdAt: serverTimestamp()
-    });
-    setReplyOpen(false);
-    setReplyBody('');
-    toast({ title: "Reply Sent" });
+    
+    setSendingEmail(true);
+    try {
+      // 1. Send via Resend
+      await sendEmailAction({
+        to: selectedEmail.from,
+        subject: `Re: ${selectedEmail.subject}`,
+        text: replyBody
+      });
+
+      // 2. Log in Firestore
+      await addDoc(collection(db, 'emails'), {
+        from: 'admin@deal4bank.com',
+        to: selectedEmail.from,
+        subject: `Re: ${selectedEmail.subject}`,
+        body: replyBody,
+        status: 'sent',
+        read: true,
+        starred: false,
+        createdAt: serverTimestamp()
+      });
+
+      setReplyOpen(false);
+      setReplyBody('');
+      toast({ title: "Reply Sent", description: "The email has been delivered via Resend." });
+    } catch (err: any) {
+      toast({ 
+        variant: 'destructive', 
+        title: "Send Failed", 
+        description: err.message || "Failed to deliver email. Check Resend config." 
+      });
+    } finally {
+      setSendingEmail(false);
+    }
   };
 
   return (
@@ -328,18 +350,21 @@ export default function EmailPage() {
                     <DialogTitle>Reply to {selectedEmail.from}</DialogTitle>
                   </DialogHeader>
                   <div className="space-y-4 py-4">
-                    <Textarea 
-                      placeholder="Write your response..." 
-                      className="min-h-[200px]"
-                      value={replyBody}
-                      onChange={(e) => setReplyBody(e.target.value)}
-                    />
+                    <div className="space-y-2">
+                      <Textarea 
+                        placeholder="Write your response..." 
+                        className="min-h-[200px]"
+                        value={replyBody}
+                        onChange={(e) => setReplyBody(e.target.value)}
+                        disabled={sendingEmail}
+                      />
+                    </div>
                     <div className="flex justify-between items-center">
                       <Button 
                         variant="outline" 
                         size="sm" 
                         onClick={handleRefineTone} 
-                        disabled={refining || !replyBody}
+                        disabled={refining || !replyBody || sendingEmail}
                         className="text-primary border-primary/20"
                       >
                         <Sparkles className="mr-2 h-3 w-3" /> {refining ? 'Refining...' : 'Refine Tone'}
@@ -348,8 +373,10 @@ export default function EmailPage() {
                     </div>
                   </div>
                   <DialogFooter>
-                    <Button variant="outline" onClick={() => setReplyOpen(false)}>Cancel</Button>
-                    <Button onClick={handleSendReply}>Send Response</Button>
+                    <Button variant="outline" onClick={() => setReplyOpen(false)} disabled={sendingEmail}>Cancel</Button>
+                    <Button onClick={handleSendReply} disabled={sendingEmail || !replyBody}>
+                      {sendingEmail ? 'Sending...' : 'Send Response'}
+                    </Button>
                   </DialogFooter>
                 </DialogContent>
               </Dialog>

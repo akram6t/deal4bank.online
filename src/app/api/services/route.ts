@@ -3,6 +3,11 @@ import { NextResponse } from 'next/server';
 import { db } from '@/lib/firebase';
 import { collection, getDocs, query, orderBy } from 'firebase/firestore';
 
+/**
+ * @fileOverview API route to fetch services from the database.
+ * Returns a structured JSON matching the format expected by the landing page.
+ */
+
 export async function GET() {
   try {
     // 1. Fetch all service categories (tabs) ordered by their display order
@@ -24,23 +29,25 @@ export async function GET() {
         };
 
         // Map dynamic Firestore attributes to keys expected by the HeroSection logic
+        // This preserves the "same data" logic from the user's component
         if (itemData.attributes && Array.isArray(itemData.attributes)) {
           itemData.attributes.forEach((attr: any) => {
-            const key = attr.label.toLowerCase();
-            // Map common labels to expected property names used in HeroSection.tsx
-            if (key.includes('interest') || key.includes('rate')) flattened.rate = attr.value;
-            if (key.includes('tenure')) flattened.tenure = attr.value;
-            if (key.includes('amount')) flattened.amount = attr.value;
-            if (key.includes('coverage')) flattened.coverage = attr.value;
-            if (key.includes('premium')) flattened.premium = attr.value;
-            if (key.includes('return')) flattened.returns = attr.value;
-            if (key.includes('risk')) flattened.risk = attr.value;
-            if (key.includes('service')) flattened.service = attr.value;
-            if (key.includes('commission')) flattened.commission = attr.value;
-            if (key.includes('fee')) flattened.fee = attr.value;
-            if (key.includes('feature')) flattened.features = attr.value;
+            const label = attr.label.toLowerCase();
+            let key = label;
+
+            // Map common labels to expected property names used in HeroSection spans
+            if (label.includes('interest') || label.includes('rate')) key = 'rate';
+            else if (label.includes('tenure')) key = 'tenure';
+            else if (label.includes('amount')) key = 'amount';
+            else if (label.includes('coverage')) key = 'coverage';
+            else if (label.includes('premium')) key = 'premium';
+            else if (label.includes('return')) key = 'returns';
+            else if (label.includes('risk')) key = 'risk';
+            else if (label.includes('service')) key = 'service';
+            else if (label.includes('commission')) key = 'commission';
+            else if (label.includes('fee')) key = 'fee';
+            else if (label.includes('feature')) key = 'features';
             
-            // Store original key-value pair for flexibility
             flattened[key] = attr.value;
           });
         }

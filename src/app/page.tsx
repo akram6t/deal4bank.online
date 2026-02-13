@@ -6,13 +6,17 @@ import Navbar from '@/components/landing/Navbar';
 import HeroSection from '@/components/landing/HeroSection';
 import Footer from '@/components/landing/Footer';
 import { States } from '@/components/landing/States';
-import { getServiceData } from '@/lib/data-parser';
+
+/**
+ * @fileOverview The main landing page for Deal4Bank.
+ * Orchestrates navigation, dynamic service fetching, and the hero application section.
+ */
 
 export default function Home() {
   const [activeTab, setActiveTab] = useState('Loan');
   const [dynamicServices, setDynamicServices] = useState<any>(null);
 
-  // Fetch dynamic services from the new API route
+  // Fetch dynamic services from the API route
   useEffect(() => {
     async function loadServices() {
       try {
@@ -33,8 +37,10 @@ export default function Home() {
       <Navbar />
 
       <div className="max-w-7xl mx-auto py-4">
+        {/* Title and States Description Section */}
         <States onLinkClick={(tabId) => setActiveTab(tabId)} />
         
+        {/* Hero Section containing dynamic tabs and application form */}
         <HeroSection 
           openedTab={activeTab} 
           onTabChange={setActiveTab} 

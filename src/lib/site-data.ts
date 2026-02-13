@@ -1,15 +1,14 @@
-
 import { db } from '@/lib/firebase';
 import { collection, getDocs, query, orderBy, doc, getDoc } from 'firebase/firestore';
 import { redis } from '@/lib/redis';
 
 /**
  * @fileOverview Shared service to fetch site-wide data (settings and services) from Firestore.
- * Implements Upstash Redis caching with a 1-hour TTL.
+ * Implements Upstash Redis caching with a 1-minute TTL.
  */
 
 const CACHE_KEY = 'deal4bank_site_data_v1';
-const CACHE_TTL = 3600; // 1 hour in seconds
+const CACHE_TTL = 60; // 1 minute in seconds
 
 export async function getMergedSiteData() {
   try {

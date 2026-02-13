@@ -8,12 +8,10 @@ import {
   LayoutDashboard, 
   Building2, 
   Contact, 
-  MapPin, 
   Briefcase, 
   Mail, 
   Settings, 
-  LogOut,
-  ChevronRight
+  LogOut
 } from 'lucide-react';
 import { 
   Sidebar, 
@@ -26,13 +24,11 @@ import {
   useSidebar
 } from '@/components/ui/sidebar';
 import { useAuth } from '@/hooks/use-auth';
-import { Button } from '@/components/ui/button';
 
 const menuItems = [
   { icon: LayoutDashboard, label: 'Dashboard', href: '/admin/dashboard' },
   { icon: Building2, label: 'Company', href: '/admin/company' },
   { icon: Contact, label: 'Contacts', href: '/admin/contacts' },
-  { icon: MapPin, label: 'States', href: '/admin/states' },
   { icon: Briefcase, label: 'Services', href: '/admin/services' },
   { icon: Mail, label: 'Emails', href: '/admin/emails' },
   { icon: Settings, label: 'Settings', href: '/admin/settings' },
@@ -73,7 +69,7 @@ export function AdminSidebar() {
                   )}
                 >
                   <Link href={item.href}>
-                    <item.icon className={cn("h-5 w-5", isActive ? "text-white" : "text-muted-foreground")} />
+                    <item.icon className={cn("h-5 w-5", isActive ? "text-primary-foreground" : "text-muted-foreground")} />
                     <span>{item.label}</span>
                   </Link>
                 </SidebarMenuButton>

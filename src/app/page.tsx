@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState } from 'react';
@@ -13,11 +14,11 @@ export default function Home() {
     <main className="min-h-screen bg-blue-50 dark:bg-neutral-950 transition-colors duration-200 relative">
       <Navbar />
 
-      <div className="max-w-7xl mx-auto py-8">
+      <div className="max-w-7xl mx-auto py-4">
         <States onLinkClick={(tabId) => setActiveTab(tabId)} />
         
         <HeroSection 
-          activeTab={activeTab} 
+          openedTab={activeTab} 
           onTabChange={setActiveTab} 
         />
       </div>

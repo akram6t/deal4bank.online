@@ -1,4 +1,3 @@
-
 "use client"
 
 import { AuthProvider } from '@/hooks/use-auth';
@@ -8,6 +7,7 @@ import { Separator } from '@/components/ui/separator';
 import { usePathname } from 'next/navigation';
 import { useState, useEffect } from 'react';
 import { NotificationHandler } from '@/components/admin/NotificationHandler';
+import { NotificationBell } from '@/components/admin/NotificationBell';
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -33,6 +33,9 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                   <span>/</span>
                   <span className="capitalize">{pageName}</span>
                 </nav>
+                <div className="flex items-center gap-4">
+                  <NotificationBell />
+                </div>
               </div>
             </header>
             <main className="p-6 md:p-8">

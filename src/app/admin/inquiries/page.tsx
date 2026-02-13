@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { collection, query, onSnapshot, orderBy, doc, updateDoc, deleteDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { 
@@ -12,19 +12,27 @@ import {
   MapPin, 
   CheckCircle2, 
   Clock,
-  Briefcase
+  Briefcase,
+  Filter
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
-import { format } from 'date-fns';
+import { format, isAfter, subDays, startOfDay, endOfDay, startOfMonth, subMonths, endOfMonth, startOfYear, subYears, endOfYear } from 'date-fns';
 import { 
   DropdownMenu, 
   DropdownMenuContent, 
   DropdownMenuItem, 
   DropdownMenuTrigger 
 } from '@/components/ui/dropdown-menu';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 
 interface Inquiry {
@@ -86,6 +94,7 @@ const DUMMY_INQUIRIES: Inquiry[] = [
 export default function InquiriesPage() {
   const [inquiries, setInquiries] = useState<Inquiry[]>([]);
   const [loading, setLoading] = useState(true);
+  const [dateFilter, setDateFilter] = useState<string>('all');
   const { toast } = useToast();
 
   useEffect(() => {
@@ -96,7 +105,6 @@ export default function InquiriesPage() {
         ...doc.data()
       })) as Inquiry[];
       
-      // If Firestore is empty, we show dummy data for the prototype
       if (list.length === 0) {
         setInquiries(DUMMY_INQUIRIES);
       } else {
@@ -105,11 +113,39 @@ export default function InquiriesPage() {
       setLoading(false);
     }, (error) => {
       console.error("Firestore Listen Error:", error);
-      setInquiries(DUMMY_INQUIRIES); // Fallback to dummy on error
+      setInquiries(DUMMY_INQUIRIES);
       setLoading(false);
     });
     return () => unsubscribe();
   }, []);
+
+  const filteredInquiries = useMemo(() => {
+    const now = new Date();
+    return inquiries.filter(item => {
+      if (dateFilter === 'all') return true;
+      
+      const date = item.createdAt?.seconds 
+        ? new Date(item.createdAt.seconds * 1000) 
+        : new Date();
+
+      switch (dateFilter) {
+        case 'today':
+          return isAfter(date, startOfDay(now));
+        case 'yesterday':
+          return isAfter(date, startOfDay(subDays(now, 1))) && isAfter(startOfDay(now), date);
+        case 'last7days':
+          return isAfter(date, subDays(now, 7));
+        case 'thisMonth':
+          return isAfter(date, startOfMonth(now));
+        case 'lastMonth':
+          return isAfter(date, startOfMonth(subMonths(now, 1))) && isAfter(startOfMonth(now), date);
+        case 'lastYear':
+          return isAfter(date, startOfYear(subYears(now, 1))) && isAfter(startOfYear(now), date);
+        default:
+          return true;
+      }
+    });
+  }, [inquiries, dateFilter]);
 
   const updateStatus = async (id: string, status: Inquiry['status'], isDummy?: boolean) => {
     if (isDummy) {
@@ -149,18 +185,38 @@ export default function InquiriesPage() {
 
   return (
     <div className="space-y-8 animate-in fade-in duration-500">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
         <div>
           <h1 className="text-3xl font-headline font-bold">Service Inquiries</h1>
           <p className="text-muted-foreground mt-1">Manage applications received from the public form.</p>
         </div>
-        <div className="flex items-center gap-2">
-          <Badge variant="outline" className="px-4 py-1">
-            {inquiries.length} Total Applications
+        
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="flex items-center gap-2 bg-muted/50 p-1 rounded-lg border">
+            <Filter className="h-4 w-4 ml-2 text-muted-foreground" />
+            <Select value={dateFilter} onValueChange={setDateFilter}>
+              <SelectTrigger className="w-[180px] border-none bg-transparent shadow-none focus:ring-0">
+                <SelectValue placeholder="Filter by date" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Inquiries</SelectItem>
+                <SelectItem value="today">Today</SelectItem>
+                <SelectItem value="yesterday">Yesterday</SelectItem>
+                <SelectItem value="last7days">Last 7 Days</SelectItem>
+                <SelectItem value="thisMonth">This Month</SelectItem>
+                <SelectItem value="lastMonth">Last Month</SelectItem>
+                <SelectItem value="lastYear">Last Year</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          <Badge variant="outline" className="px-4 py-1.5 h-10 border-dashed">
+            {filteredInquiries.length} Result{filteredInquiries.length !== 1 ? 's' : ''}
           </Badge>
+          
           {inquiries.some(i => i.isDummy) && (
-            <Badge variant="secondary" className="bg-yellow-100 text-yellow-800 border-yellow-200">
-              Demo Data Mode
+            <Badge variant="secondary" className="bg-yellow-100 text-yellow-800 border-yellow-200 h-10 px-4">
+              Demo Data
             </Badge>
           )}
         </div>
@@ -171,13 +227,19 @@ export default function InquiriesPage() {
           Array(3).fill(0).map((_, i) => (
             <div key={i} className="h-32 w-full bg-muted animate-pulse rounded-xl" />
           ))
-        ) : inquiries.length === 0 ? (
-          <Card className="p-12 text-center bg-muted/20">
-            <ClipboardList className="h-12 w-12 mx-auto text-muted-foreground opacity-20 mb-4" />
-            <p className="text-muted-foreground">No inquiries found yet.</p>
+        ) : filteredInquiries.length === 0 ? (
+          <Card className="p-20 text-center bg-muted/10 border-dashed">
+            <ClipboardList className="h-16 w-16 mx-auto text-muted-foreground opacity-20 mb-4" />
+            <h3 className="text-lg font-semibold text-foreground">No inquiries found</h3>
+            <p className="text-muted-foreground text-sm max-w-xs mx-auto mt-1">Try adjusting your filters or wait for new applications.</p>
+            {dateFilter !== 'all' && (
+              <Button variant="link" onClick={() => setDateFilter('all')} className="mt-4">
+                Clear filter
+              </Button>
+            )}
           </Card>
         ) : (
-          inquiries.map((item) => (
+          filteredInquiries.map((item) => (
             <Card key={item.id} className="hover:shadow-md transition-all group overflow-hidden border-border bg-card">
               <CardContent className="p-0">
                 <div className="flex flex-col md:flex-row">

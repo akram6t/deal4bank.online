@@ -6,8 +6,6 @@ import { collection, query, onSnapshot, orderBy, doc, updateDoc, deleteDoc, addD
 import { db } from '@/lib/firebase';
 import { 
   Plus, 
-  Eye, 
-  EyeOff, 
   Edit, 
   Trash2, 
   LayoutGrid,
@@ -15,22 +13,19 @@ import {
   Shield,
   Briefcase,
   Home,
-  Settings2,
   User,
   Car,
   Building,
   Landmark,
-  X,
-  Type
+  X
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
-import { Switch } from '@/components/ui/switch';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { cn } from "@/lib/utils";
 
@@ -157,7 +152,7 @@ export default function ServicesPage() {
   const addAttribute = () => {
     setEditingItem(prev => ({
       ...prev!,
-      attributes: [...(prev?.attributes || []), { label: 'New Key', value: 'Value' }]
+      attributes: [...(prev?.attributes || []), { label: '', value: '' }]
     }));
   };
 
@@ -171,7 +166,7 @@ export default function ServicesPage() {
   const updateAttribute = (index: number, field: 'label' | 'value', val: string) => {
     setEditingItem(prev => {
       const newAttrs = [...(prev?.attributes || [])];
-      newAttrs[index][field] = val;
+      newAttrs[index] = { ...newAttrs[index], [field]: val };
       return { ...prev!, attributes: newAttrs };
     });
   };
@@ -179,22 +174,25 @@ export default function ServicesPage() {
   return (
     <div className="space-y-8 animate-in fade-in duration-500">
       <div className="flex justify-between items-center">
-        <h1 className="text-3xl font-headline font-bold text-foreground">OUR SERVICES AND RATES:-</h1>
+        <div>
+          <h1 className="text-3xl font-headline font-bold text-foreground">Services Management</h1>
+          <p className="text-muted-foreground mt-1">Configure interest rates, terms, and bank products.</p>
+        </div>
         <Button onClick={() => { setEditingTab({ name: '', icon: 'Landmark' }); setTabModalOpen(true); }}>
           <Plus className="mr-2 h-4 w-4" /> Add Category
         </Button>
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <div className="flex flex-wrap items-center gap-4 mb-8">
-          <TabsList className="bg-transparent h-auto p-0 flex flex-wrap gap-3">
+        <div className="flex flex-wrap items-center justify-between gap-4 mb-8">
+          <TabsList className="bg-muted p-1 h-auto flex flex-wrap gap-1">
             {tabs.map((tab) => {
               const Icon = getIcon(tab.icon, CATEGORY_ICONS);
               return (
                 <TabsTrigger 
                   key={tab.id} 
                   value={tab.id} 
-                  className="data-[state=active]:bg-primary data-[state=active]:text-white bg-muted/40 border-2 border-transparent px-6 py-3 rounded-lg flex items-center gap-2 transition-all hover:bg-muted"
+                  className="px-6 py-2.5 flex items-center gap-2"
                 >
                   <Icon className="h-4 w-4" />
                   {tab.name}
@@ -205,10 +203,10 @@ export default function ServicesPage() {
           
           {activeTab && (
             <div className="flex gap-2">
-              <Button variant="ghost" size="icon" onClick={() => { setEditingTab(tabs.find(t => t.id === activeTab)); setTabModalOpen(true); }}>
-                <Edit className="h-4 w-4" />
+              <Button variant="outline" size="sm" onClick={() => { setEditingTab(tabs.find(t => t.id === activeTab)); setTabModalOpen(true); }}>
+                <Edit className="h-4 w-4 mr-2" /> Edit Category
               </Button>
-              <Button variant="ghost" size="icon" className="text-destructive" onClick={() => deleteDoc(doc(db, 'services_tabs', activeTab))}>
+              <Button variant="outline" size="icon" className="text-destructive hover:bg-destructive/10" onClick={() => deleteDoc(doc(db, 'services_tabs', activeTab))}>
                 <Trash2 className="h-4 w-4" />
               </Button>
             </div>
@@ -221,29 +219,30 @@ export default function ServicesPage() {
               {items.map((item) => {
                 const ItemIcon = getIcon(item.iconName, ITEM_ICONS);
                 return (
-                  <Card key={item.id} className="bg-zinc-900 border-zinc-800 hover:border-zinc-700 transition-colors group">
-                    <CardContent className="p-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
-                      <div className="flex items-center gap-4">
-                        <div className="bg-primary/10 p-3 rounded-xl">
-                          <ItemIcon className="h-6 w-6 text-primary" />
+                  <Card key={item.id} className="hover:border-primary/50 transition-colors group">
+                    <CardContent className="p-6 flex flex-col md:flex-row md:items-center justify-between gap-6">
+                      <div className="flex items-center gap-5 flex-1">
+                        <div className="bg-primary/10 p-4 rounded-2xl">
+                          <ItemIcon className="h-7 w-7 text-primary" />
                         </div>
-                        <div>
-                          <h3 className="text-xl font-bold text-white">{item.title}</h3>
-                          <div className="flex flex-wrap items-center gap-x-2 text-sm text-zinc-400 mt-1">
+                        <div className="min-w-0">
+                          <h3 className="text-xl font-bold text-foreground">{item.title}</h3>
+                          <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-muted-foreground mt-2">
                             {item.attributes.map((attr, idx) => (
                               <div key={idx} className="flex items-center">
-                                {idx > 0 && <span className="mx-2 text-zinc-600">|</span>}
-                                {attr.label}: <span className="text-primary font-semibold ml-1">{attr.value}</span>
+                                <span className="font-medium">{attr.label}:</span>
+                                <span className="text-primary font-bold ml-1.5">{attr.value}</span>
+                                {idx < item.attributes.length - 1 && <div className="ml-4 h-3 w-px bg-border hidden sm:block" />}
                               </div>
                             ))}
                           </div>
                         </div>
                       </div>
-                      <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <div className="flex items-center gap-3">
                         <Button variant="ghost" size="icon" onClick={() => { setEditingItem(item); setItemModalOpen(true); }}>
-                          <Edit className="h-4 w-4 text-zinc-400" />
+                          <Edit className="h-4 w-4" />
                         </Button>
-                        <Button variant="ghost" size="icon" className="text-destructive/60 hover:text-destructive" onClick={() => deleteDoc(doc(db, `services_tabs/${activeTab}/items`, item.id))}>
+                        <Button variant="ghost" size="icon" className="text-destructive/60 hover:text-destructive hover:bg-destructive/10" onClick={() => deleteDoc(doc(db, `services_tabs/${activeTab}/items`, item.id))}>
                           <Trash2 className="h-4 w-4" />
                         </Button>
                       </div>
@@ -254,7 +253,7 @@ export default function ServicesPage() {
               
               <Button 
                 variant="outline" 
-                className="w-full h-24 border-dashed border-zinc-800 text-zinc-500 hover:text-zinc-300"
+                className="w-full h-32 border-dashed border-2 text-muted-foreground hover:text-foreground hover:bg-muted/50"
                 onClick={() => { setEditingItem({ title: '', iconName: 'User', attributes: [] }); setItemModalOpen(true); }}
               >
                 <Plus className="mr-2 h-5 w-5" /> Add New Service to {tab.name}
@@ -266,15 +265,15 @@ export default function ServicesPage() {
 
       {/* Tab Modal */}
       <Dialog open={tabModalOpen} onOpenChange={setTabModalOpen}>
-        <DialogContent className="bg-zinc-900 border-zinc-800 text-white">
+        <DialogContent>
           <DialogHeader>
-            <DialogTitle>Category Details</DialogTitle>
+            <DialogTitle>{editingTab?.id ? 'Edit Category' : 'New Category'}</DialogTitle>
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="space-y-2">
               <Label>Category Name</Label>
               <Input 
-                className="bg-zinc-800 border-zinc-700"
+                placeholder="e.g. Loans"
                 value={editingTab?.name || ''} 
                 onChange={e => setEditingTab(p => ({...p!, name: e.target.value}))}
               />
@@ -282,10 +281,10 @@ export default function ServicesPage() {
             <div className="space-y-2">
               <Label>Icon</Label>
               <Select value={editingTab?.icon} onValueChange={v => setEditingTab(p => ({...p!, icon: v}))}>
-                <SelectTrigger className="bg-zinc-800 border-zinc-700">
-                  <SelectValue />
+                <SelectTrigger>
+                  <SelectValue placeholder="Select icon" />
                 </SelectTrigger>
-                <SelectContent className="bg-zinc-900 border-zinc-800">
+                <SelectContent>
                   {CATEGORY_ICONS.map(i => (
                     <SelectItem key={i.name} value={i.name}>
                       <div className="flex items-center gap-2">
@@ -298,24 +297,24 @@ export default function ServicesPage() {
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setTabModalOpen(false)}>Cancel</Button>
-            <Button onClick={handleSaveTab} disabled={loading}>{loading ? 'Saving...' : 'Save'}</Button>
+            <Button variant="ghost" onClick={() => setTabModalOpen(false)}>Cancel</Button>
+            <Button onClick={handleSaveTab} disabled={loading}>{loading ? 'Saving...' : 'Save Category'}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
       {/* Item Modal */}
       <Dialog open={itemModalOpen} onOpenChange={setItemModalOpen}>
-        <DialogContent className="bg-zinc-900 border-zinc-800 text-white max-w-2xl">
+        <DialogContent className="max-w-2xl">
           <DialogHeader>
-            <DialogTitle>Service Item Details</DialogTitle>
+            <DialogTitle>{editingItem?.id ? 'Edit Service' : 'New Service'}</DialogTitle>
           </DialogHeader>
           <div className="space-y-6 py-4">
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>Service Title</Label>
                 <Input 
-                  className="bg-zinc-800 border-zinc-700"
+                  placeholder="e.g. Home Loan"
                   value={editingItem?.title || ''} 
                   onChange={e => setEditingItem(p => ({...p!, title: e.target.value}))}
                 />
@@ -323,10 +322,10 @@ export default function ServicesPage() {
               <div className="space-y-2">
                 <Label>Service Icon</Label>
                 <Select value={editingItem?.iconName} onValueChange={v => setEditingItem(p => ({...p!, iconName: v}))}>
-                  <SelectTrigger className="bg-zinc-800 border-zinc-700">
-                    <SelectValue />
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select icon" />
                   </SelectTrigger>
-                  <SelectContent className="bg-zinc-900 border-zinc-800">
+                  <SelectContent>
                     {ITEM_ICONS.map(i => (
                       <SelectItem key={i.name} value={i.name}>
                         <div className="flex items-center gap-2">
@@ -341,36 +340,41 @@ export default function ServicesPage() {
 
             <div className="space-y-3">
               <div className="flex items-center justify-between">
-                <Label className="text-zinc-400">Custom Attributes (Interest, Tenure, etc.)</Label>
-                <Button variant="ghost" size="sm" onClick={addAttribute} className="h-8 text-primary">
-                  <Plus className="mr-1 h-3 w-3" /> Add Row
+                <Label className="text-sm font-bold uppercase tracking-wider text-muted-foreground">Service Details</Label>
+                <Button variant="outline" size="sm" onClick={addAttribute} className="h-8">
+                  <Plus className="mr-1 h-3 w-3" /> Add Detail
                 </Button>
               </div>
-              <div className="space-y-2">
+              <div className="space-y-2 max-h-[300px] overflow-y-auto pr-2">
                 {editingItem?.attributes?.map((attr, idx) => (
                   <div key={idx} className="flex gap-2 items-center group/row">
                     <Input 
                       placeholder="Label (e.g. Interest)"
-                      className="bg-zinc-800 border-zinc-700 flex-1"
+                      className="flex-1"
                       value={attr.label}
                       onChange={e => updateAttribute(idx, 'label', e.target.value)}
                     />
                     <Input 
                       placeholder="Value (e.g. 10.5%)"
-                      className="bg-zinc-800 border-zinc-700 flex-1"
+                      className="flex-1"
                       value={attr.value}
                       onChange={e => updateAttribute(idx, 'value', e.target.value)}
                     />
-                    <Button variant="ghost" size="icon" onClick={() => removeAttribute(idx)} className="text-destructive opacity-0 group-hover/row:opacity-100">
+                    <Button variant="ghost" size="icon" onClick={() => removeAttribute(idx)} className="text-destructive">
                       <X className="h-4 w-4" />
                     </Button>
                   </div>
                 ))}
+                {editingItem?.attributes?.length === 0 && (
+                  <p className="text-center text-xs text-muted-foreground py-8 border-2 border-dashed rounded-lg">
+                    No details added. Click "Add Detail" to include rates, terms, etc.
+                  </p>
+                )}
               </div>
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setItemModalOpen(false)}>Cancel</Button>
+            <Button variant="ghost" onClick={() => setItemModalOpen(false)}>Cancel</Button>
             <Button onClick={handleSaveItem} disabled={loading}>{loading ? 'Saving...' : 'Save Service'}</Button>
           </DialogFooter>
         </DialogContent>
@@ -378,3 +382,4 @@ export default function ServicesPage() {
     </div>
   );
 }
+

@@ -43,6 +43,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { cn } from "@/lib/utils";
+import { invalidateSiteDataCache } from '@/app/actions/cache-actions';
 
 interface ServiceAttribute {
   label: string;
@@ -156,6 +157,7 @@ export default function ServicesPage() {
       } else {
         await addDoc(collection(db, 'services_tabs'), data);
       }
+      await invalidateSiteDataCache();
       setTabModalOpen(false);
       toast({ title: "Category saved" });
     } catch (err) {
@@ -183,12 +185,35 @@ export default function ServicesPage() {
       } else {
         await addDoc(collection(db, `services_tabs/${activeTabId}/items`), data);
       }
+      await invalidateSiteDataCache();
       setItemModalOpen(false);
       toast({ title: "Service item saved" });
     } catch (err) {
       toast({ variant: 'destructive', title: "Error saving item" });
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleDeleteTab = async (id: string) => {
+    if (!confirm("Are you sure you want to delete this category?")) return;
+    try {
+      await deleteDoc(doc(db, 'services_tabs', id));
+      await invalidateSiteDataCache();
+      toast({ title: "Category deleted" });
+    } catch (err) {
+      toast({ variant: 'destructive', title: "Delete failed" });
+    }
+  };
+
+  const handleDeleteItem = async (id: string) => {
+    if (!confirm("Are you sure you want to delete this item?")) return;
+    try {
+      await deleteDoc(doc(db, `services_tabs/${activeTabId}/items`, id));
+      await invalidateSiteDataCache();
+      toast({ title: "Item deleted" });
+    } catch (err) {
+      toast({ variant: 'destructive', title: "Delete failed" });
     }
   };
 
@@ -207,6 +232,7 @@ export default function ServicesPage() {
       await updateDoc(doc(db, `services_tabs/${activeTabId}/items`, neighborItem.id), {
         order: currentItem.order
       });
+      await invalidateSiteDataCache();
     } catch (err) {
       toast({ variant: 'destructive', title: "Reordering failed" });
     }
@@ -285,7 +311,7 @@ export default function ServicesPage() {
               <Button variant="outline" size="sm" onClick={() => { setEditingTab(activeTab); setTabModalOpen(true); }}>
                 <Settings2 className="h-4 w-4 mr-2" /> Configure Category
               </Button>
-              <Button variant="outline" size="icon" className="text-destructive hover:bg-destructive/10" onClick={() => deleteDoc(doc(db, 'services_tabs', activeTabId))}>
+              <Button variant="outline" size="icon" className="text-destructive hover:bg-destructive/10" onClick={() => handleDeleteTab(activeTabId)}>
                 <Trash2 className="h-4 w-4" />
               </Button>
             </div>
@@ -343,7 +369,7 @@ export default function ServicesPage() {
                         <Button variant="ghost" size="icon" onClick={() => { setEditingItem(item); setItemModalOpen(true); }}>
                           <Edit className="h-4 w-4" />
                         </Button>
-                        <Button variant="ghost" size="icon" className="text-destructive/60 hover:text-destructive hover:bg-destructive/10" onClick={() => deleteDoc(doc(db, `services_tabs/${activeTabId}/items`, item.id))}>
+                        <Button variant="ghost" size="icon" className="text-destructive/60 hover:text-destructive hover:bg-destructive/10" onClick={() => handleDeleteItem(item.id)}>
                           <Trash2 className="h-4 w-4" />
                         </Button>
                       </div>
@@ -517,4 +543,3 @@ export default function ServicesPage() {
     </div>
   );
 }
-

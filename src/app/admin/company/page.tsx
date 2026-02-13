@@ -1,3 +1,4 @@
+
 "use client"
 
 import { useState, useEffect } from 'react';
@@ -10,6 +11,7 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 import { Upload, Building2, Save, Phone, Mail, MessageSquare } from 'lucide-react';
+import { invalidateSiteDataCache } from '@/app/actions/cache-actions';
 
 export default function CompanyPage() {
   const [loading, setLoading] = useState(false);
@@ -70,7 +72,8 @@ export default function CompanyPage() {
     setLoading(true);
     try {
       await setDoc(doc(db, 'settings', 'company'), formData);
-      toast({ title: "Settings saved" });
+      await invalidateSiteDataCache();
+      toast({ title: "Settings saved", description: "Public cache has been invalidated." });
     } catch (err) {
       toast({ variant: 'destructive', title: "Save failed" });
     } finally {

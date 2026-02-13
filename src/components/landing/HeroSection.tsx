@@ -1,6 +1,4 @@
-
 'use client';
-
 import { useState } from 'react';
 import { Card } from '@/components/ui/card';
 import { Shield, Clock, TrendingDown, Headphones, Eye, Home, User, Building2, Car, Heart, BarChart3, Banknote, ShoppingCart } from 'lucide-react';
@@ -14,7 +12,6 @@ interface HeroSectionProps {
 }
 
 export default function HeroSection({ openedTab, onTabChange, servicesData }: HeroSectionProps) {
-  // Use dynamic data if provided, otherwise fallback to static SITE_CONFIG
   const services = servicesData || getServiceData();
   const serviceTabs = services.tabs;
 
@@ -41,33 +38,49 @@ export default function HeroSection({ openedTab, onTabChange, servicesData }: He
     }
   };
 
-  // Map icon strings to actual components
   const iconComponents: Record<string, React.ComponentType<any>> = {
     User, Home, Building2, Car, Banknote, Heart, Shield, Headphones,
     BarChart3, TrendingDown, ShoppingCart, Eye
+  };
+
+  // Normalizes dynamic attribute arrays into keys used in the user's logic
+  const normalizeItem = (item: any) => {
+    if (!item.attributes || !Array.isArray(item.attributes)) return item;
+    const normalized = { ...item };
+    item.attributes.forEach((attr: any) => {
+      const label = attr.label.toLowerCase();
+      if (label.includes('interest') || label.includes('rate')) normalized.rate = attr.value;
+      if (label.includes('tenure')) normalized.tenure = attr.value;
+      if (label.includes('amount')) normalized.amount = attr.value;
+      if (label.includes('coverage')) normalized.coverage = attr.value;
+      if (label.includes('premium')) normalized.premium = attr.value;
+      if (label.includes('return')) normalized.returns = attr.value;
+      if (label.includes('risk')) normalized.risk = attr.value;
+      if (label.includes('service')) normalized.service = attr.value;
+      if (label.includes('commission')) normalized.commission = attr.value;
+      if (label.includes('fee')) normalized.fee = attr.value;
+      if (label.includes('feature')) normalized.features = attr.value;
+    });
+    return normalized;
   };
 
   return (
     <section className="py-2 transition-colors duration-200">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
-          {/* Form Section - Left Side (Shown first on mobile) */}
           <div className="order-1 lg:order-2">
             <ApplyServiceForm onSubmit={handleFormSubmit} />
           </div>
 
-          {/* Service Tabs Section - Right Side (Hidden on mobile, shown after form) */}
           <div className="order-2 lg:order-1">
-            {/* Heading */}
             <h2 className="text-sm font-semibold uppercase text-blue-700 dark:text-blue-400 mb-4">{services.heading}</h2>
 
-            {/* Tab Navigation */}
             <div id="services" className="z-10 bg-white dark:bg-neutral-900 pt-2 pb-3 flex items-center gap-2 mb-2 overflow-x-scroll scrollbar-hide border-b border-gray-200 dark:border-neutral-700">
               {serviceTabs.map((tab: any) => (
                 <button
                   key={tab.id}
                   onClick={() => onTabChange(tab.id)}
-                  className={`${serviceTabs[0].id === tab.id ? 'ms-2' : ''} ${serviceTabs[serviceTabs.length - 1].id === tab.id ? 'me-6' : ''} px-4 py-2 rounded-lg flex items-center space-x-2 transition-colors duration-200 whitespace-nowrap ${openedTab === tab.id
+                  className={`${serviceTabs[0].id === tab.id ? 'ms-2' : ''} ${serviceTabs[serviceTabs.length - 1].id === tab.id ? 'me-6' : ''} px-4 py-2 rounded-lg flex items-center space-x-2 transition-colors duration-200 ${openedTab === tab.id
                     ? 'bg-blue-600 text-white dark:bg-blue-500 shadow-sm'
                     : 'bg-white dark:bg-neutral-800 text-gray-900 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-neutral-700 border border-gray-300 dark:border-gray-700'
                     }`}
@@ -77,12 +90,12 @@ export default function HeroSection({ openedTab, onTabChange, servicesData }: He
               ))}
             </div>
 
-            {/* Tab Content */}
             <div className="bg-white dark:bg-neutral-900 rounded-lg p-6 border border-gray-200 dark:border-gray-700 transition-colors duration-200 min-h-[400px]">
               {serviceTabs.map((tab: any) => (
                 openedTab === tab.id && (
                   <div key={tab.id} className="space-y-4 animate-in fade-in duration-300">
-                    {tab.data.map((item: any, index: number) => {
+                    {tab.data.map((rawItem: any, index: number) => {
+                      const item = normalizeItem(rawItem);
                       const IconComponent = iconComponents[item.icon] || Shield;
                       return (
                         <div key={index} className="bg-white dark:bg-neutral-800 rounded-lg p-4 border border-gray-200 dark:border-gray-600 transition-colors duration-200 hover:shadow-sm">
@@ -93,17 +106,17 @@ export default function HeroSection({ openedTab, onTabChange, servicesData }: He
                             <h3 className="text-lg font-semibold text-gray-900 dark:text-white">{item.type}</h3>
                           </div>
                           <div className="text-sm text-gray-600 dark:text-gray-300">
-                            {tab.id.toLowerCase().includes('loan') && (
-                              <span>Interest: <span className="text-blue-600 dark:text-blue-300 font-semibold">{item.rate || 'N/A'}</span> | Tenure: <span className="text-blue-600 font-semibold dark:text-blue-300">{item.tenure || 'N/A'}</span> | Amount: <span className="text-blue-600 dark:text-blue-300 font-semibold">{item.amount || 'N/A'}</span></span>
+                            {(tab.id === 'Loan' || tab.title.includes('Loan')) && (
+                              <span>Interest: <span className="text-blue-600 dark:text-blue-300 font-semibold">{(item as any).rate || 'N/A'}</span> | Tenure: <span className="text-blue-600 font-semibold dark:text-blue-300 font-semibold">{(item as any).tenure || 'N/A'}</span> | Amount: <span className="text-blue-600 dark:text-blue-300 font-semibold">{(item as any).amount || 'N/A'}</span></span>
                             )}
-                            {tab.id.toLowerCase().includes('insurance') && (
-                              <span>Coverage: <span className="text-blue-600 dark:text-blue-300 font-semibold">{item.coverage || 'N/A'}</span> | Premium: <span className="text-blue-600 dark:text-blue-300 font-semibold">{item.premium || 'N/A'}</span> | Features: <span className="text-blue-600 dark:text-blue-300">{item.features || 'N/A'}</span></span>
+                            {(tab.id === 'Insurance' || tab.title.includes('Insurance')) && (
+                              <span>Coverage: <span className="text-blue-600 dark:text-blue-300 font-semibold">{(item as any).coverage || 'N/A'}</span> | Premium: <span className="text-blue-600 dark:text-blue-300 font-semibold">{(item as any).premium || 'N/A'}</span> | Features: <span className="text-blue-600 dark:text-blue-300">{(item as any).features || 'N/A'}</span></span>
                             )}
-                            {tab.id.toLowerCase().includes('investment') && (
-                              <span>Returns: <span className="text-blue-600 dark:text-blue-300 font-semibold">{item.returns || 'N/A'}</span> | Risk: <span className="text-blue-600 dark:text-blue-300 font-semibold">{item.risk || 'N/A'}</span> | Features: <span className="text-blue-600 dark:text-blue-300">{item.features || 'N/A'}</span></span>
+                            {(tab.id === 'Investment' || tab.title.includes('Investment')) && (
+                              <span>Returns: <span className="text-blue-600 dark:text-blue-300 font-semibold">{(item as any).returns || 'N/A'}</span> | Risk: <span className="text-blue-600 dark:text-blue-300 font-semibold">{(item as any).risk || 'N/A'}</span> | Features: <span className="text-blue-600 dark:text-blue-300">{(item as any).features || 'N/A'}</span></span>
                             )}
-                            {tab.id.toLowerCase().includes('property') && (
-                              <span>Service: <span className="text-blue-600 dark:text-blue-300 font-semibold">{item.service || 'N/A'}</span> | {item.commission ? 'Commission' : 'Fee'}: <span className="text-blue-600 dark:text-blue-300 font-semibold">{item.commission || item.fee || 'N/A'}</span> | Features: <span className="text-blue-600 dark:text-blue-300">{item.features || 'N/A'}</span></span>
+                            {(tab.id === 'Property' || tab.title.includes('Property')) && (
+                              <span>Service: <span className="text-blue-600 dark:text-blue-300 font-semibold">{(item as any).service || 'N/A'}</span> | {(item as any).commission ? 'Commission' : 'Fee'}: <span className="text-blue-600 dark:text-blue-300 font-semibold">{(item as any).commission || (item as any).fee || 'N/A'}</span> | Features: <span className="text-blue-600 dark:text-blue-300">{(item as any).features || 'N/A'}</span></span>
                             )}
                           </div>
                         </div>

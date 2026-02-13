@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -24,13 +23,22 @@ export default function Home() {
         if (res.ok) {
           const data = await res.json();
           setDynamicServices(data);
+          
+          // Auto-select the first tab if we have dynamic data and the default hasn't changed
+          if (data.tabs && data.tabs.length > 0 && activeTab === 'Loan') {
+            const firstTabId = data.tabs[0].id;
+            // Only update if the dynamic ID is actually different
+            if (firstTabId !== 'Loan') {
+              setActiveTab(firstTabId);
+            }
+          }
         }
       } catch (err) {
         console.error("Failed to load dynamic services:", err);
       }
     }
     loadServices();
-  }, []);
+  }, []); // Run once on mount
 
   return (
     <main className="min-h-screen bg-blue-50 dark:bg-neutral-950 transition-colors duration-200 relative">

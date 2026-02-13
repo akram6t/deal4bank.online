@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState } from 'react';
@@ -11,7 +10,7 @@ export default function Home() {
   const [activeTab, setActiveTab] = useState('Loan');
 
   return (
-    <main className="min-h-screen bg-blue-50/30 dark:bg-neutral-950 transition-colors duration-200">
+    <main className="min-h-screen bg-blue-50 dark:bg-neutral-950 transition-colors duration-200 relative">
       <Navbar />
 
       <div className="max-w-7xl mx-auto py-8">

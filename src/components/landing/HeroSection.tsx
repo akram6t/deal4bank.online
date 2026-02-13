@@ -76,7 +76,7 @@ export default function HeroSection({ openedTab, onTabChange }: HeroSectionProps
             </div>
 
             {/* Tab Content */}
-            <div className="bg-white/50 dark:bg-neutral-900/50 backdrop-blur-sm rounded-lg p-6 border border-gray-200 dark:border-neutral-700 transition-colors duration-200">
+            <div className="bg-white dark:bg-neutral-900 backdrop-blur-sm rounded-lg p-6 border border-gray-200 dark:border-neutral-700 transition-colors duration-200">
               {serviceTabs.map((tab) => (
                 openedTab === tab.id && (
                   <div key={tab.id} className="space-y-4">

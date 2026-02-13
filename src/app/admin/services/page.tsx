@@ -29,7 +29,9 @@ import {
   Wallet,
   Percent,
   CheckCircle2,
-  AlertCircle
+  AlertCircle,
+  ArrowUp,
+  ArrowDown
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -190,6 +192,26 @@ export default function ServicesPage() {
     }
   };
 
+  const moveItem = async (index: number, direction: 'up' | 'down') => {
+    if (!activeTabId) return;
+    const newIndex = direction === 'up' ? index - 1 : index + 1;
+    if (newIndex < 0 || newIndex >= items.length) return;
+
+    const currentItem = items[index];
+    const neighborItem = items[newIndex];
+
+    try {
+      await updateDoc(doc(db, `services_tabs/${activeTabId}/items`, currentItem.id), {
+        order: neighborItem.order
+      });
+      await updateDoc(doc(db, `services_tabs/${activeTabId}/items`, neighborItem.id), {
+        order: currentItem.order
+      });
+    } catch (err) {
+      toast({ variant: 'destructive', title: "Reordering failed" });
+    }
+  };
+
   const addTabKey = () => {
     setEditingTab(prev => ({
       ...prev!,
@@ -273,12 +295,32 @@ export default function ServicesPage() {
         {tabs.map((tab) => (
           <TabsContent key={tab.id} value={tab.id} className="space-y-4">
             <div className="grid gap-4">
-              {items.map((item) => {
+              {items.map((item, index) => {
                 const ItemIcon = getIcon(item.iconName);
                 return (
                   <Card key={item.id} className="hover:border-primary/50 transition-colors group bg-card">
                     <CardContent className="p-6 flex flex-col md:flex-row md:items-center justify-between gap-6">
                       <div className="flex items-center gap-5 flex-1">
+                        <div className="flex flex-col gap-1 mr-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            className="h-6 w-6" 
+                            disabled={index === 0}
+                            onClick={() => moveItem(index, 'up')}
+                          >
+                            <ArrowUp className="h-3 w-3" />
+                          </Button>
+                          <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            className="h-6 w-6" 
+                            disabled={index === items.length - 1}
+                            onClick={() => moveItem(index, 'down')}
+                          >
+                            <ArrowDown className="h-3 w-3" />
+                          </Button>
+                        </div>
                         <div className="bg-primary/10 p-4 rounded-2xl">
                           <ItemIcon className="h-7 w-7 text-primary" />
                         </div>
@@ -475,3 +517,4 @@ export default function ServicesPage() {
     </div>
   );
 }
+

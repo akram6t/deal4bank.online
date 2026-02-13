@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -24,12 +25,14 @@ export default function Home() {
           const data = await res.json();
           setDynamicServices(data);
           
-          // Auto-select the first tab if we have dynamic data and the default hasn't changed
-          if (data.tabs && data.tabs.length > 0 && activeTab === 'Loan') {
-            const firstTabId = data.tabs[0].id;
-            // Only update if the dynamic ID is actually different
-            if (firstTabId !== 'Loan') {
-              setActiveTab(firstTabId);
+          // If we have dynamic data, ensure we select a valid tab
+          if (data.tabs && data.tabs.length > 0) {
+            // Try to find if 'Loan' exists in dynamic titles
+            const loanTab = data.tabs.find((t: any) => t.title.toLowerCase().includes('loan'));
+            if (loanTab) {
+              setActiveTab(loanTab.id);
+            } else {
+              setActiveTab(data.tabs[0].id);
             }
           }
         }
@@ -38,7 +41,7 @@ export default function Home() {
       }
     }
     loadServices();
-  }, []); // Run once on mount
+  }, []);
 
   return (
     <main className="min-h-screen bg-blue-50 dark:bg-neutral-950 transition-colors duration-200 relative">

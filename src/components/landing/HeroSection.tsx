@@ -1,3 +1,4 @@
+
 'use client';
 import { useState } from 'react';
 import { Card } from '@/components/ui/card';
@@ -43,23 +44,23 @@ export default function HeroSection({ openedTab, onTabChange, servicesData }: He
     BarChart3, TrendingDown, ShoppingCart, Eye
   };
 
-  // Normalizes dynamic attribute arrays into keys used in the user's logic
+  // Normalizes dynamic attribute arrays into keys used in your logic
   const normalizeItem = (item: any) => {
     if (!item.attributes || !Array.isArray(item.attributes)) return item;
     const normalized = { ...item };
     item.attributes.forEach((attr: any) => {
       const label = attr.label.toLowerCase();
-      if (label.includes('interest') || label.includes('rate')) normalized.rate = attr.value;
+      if (label.includes('interest')) normalized.rate = attr.value;
       if (label.includes('tenure')) normalized.tenure = attr.value;
       if (label.includes('amount')) normalized.amount = attr.value;
       if (label.includes('coverage')) normalized.coverage = attr.value;
       if (label.includes('premium')) normalized.premium = attr.value;
-      if (label.includes('return')) normalized.returns = attr.value;
+      if (label.includes('features')) normalized.features = attr.value;
+      if (label.includes('returns')) normalized.returns = attr.value;
       if (label.includes('risk')) normalized.risk = attr.value;
       if (label.includes('service')) normalized.service = attr.value;
-      if (label.includes('commission')) normalized.commission = attr.value;
+      if (label.includes('commision') || label.includes('commission')) normalized.commission = attr.value;
       if (label.includes('fee')) normalized.fee = attr.value;
-      if (label.includes('feature')) normalized.features = attr.value;
     });
     return normalized;
   };
@@ -80,7 +81,7 @@ export default function HeroSection({ openedTab, onTabChange, servicesData }: He
                 <button
                   key={tab.id}
                   onClick={() => onTabChange(tab.id)}
-                  className={`${serviceTabs[0].id === tab.id ? 'ms-2' : ''} ${serviceTabs[serviceTabs.length - 1].id === tab.id ? 'me-6' : ''} px-4 py-2 rounded-lg flex items-center space-x-2 transition-colors duration-200 ${openedTab === tab.id
+                  className={`${serviceTabs[0].id === tab.id ? 'ms-2' : ''} ${serviceTabs[serviceTabs.length - 1].id === tab.id ? 'me-6' : ''} px-4 py-2 rounded-lg flex items-center space-x-2 transition-colors duration-200 ${openedTab === tab.id || (openedTab.toLowerCase() === tab.title.toLowerCase().replace(/[^a-z]/g, ''))
                     ? 'bg-blue-600 text-white dark:bg-blue-500 shadow-sm'
                     : 'bg-white dark:bg-neutral-800 text-gray-900 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-neutral-700 border border-gray-300 dark:border-gray-700'
                     }`}
@@ -92,7 +93,7 @@ export default function HeroSection({ openedTab, onTabChange, servicesData }: He
 
             <div className="bg-white dark:bg-neutral-900 rounded-lg p-6 border border-gray-200 dark:border-gray-700 transition-colors duration-200 min-h-[400px]">
               {serviceTabs.map((tab: any) => (
-                openedTab === tab.id && (
+                (openedTab === tab.id || openedTab.toLowerCase() === tab.title.toLowerCase().replace(/[^a-z]/g, '')) && (
                   <div key={tab.id} className="space-y-4 animate-in fade-in duration-300">
                     {tab.data.map((rawItem: any, index: number) => {
                       const item = normalizeItem(rawItem);
@@ -106,27 +107,22 @@ export default function HeroSection({ openedTab, onTabChange, servicesData }: He
                             <h3 className="text-lg font-semibold text-gray-900 dark:text-white">{item.type}</h3>
                           </div>
                           <div className="text-sm text-gray-600 dark:text-gray-300">
-                            {(tab.id === 'Loan' || tab.title.includes('Loan')) && (
+                            {(tab.id === 'Loan' || tab.title.toLowerCase().includes('loan')) && (
                               <span>Interest: <span className="text-blue-600 dark:text-blue-300 font-semibold">{(item as any).rate || 'N/A'}</span> | Tenure: <span className="text-blue-600 font-semibold dark:text-blue-300 font-semibold">{(item as any).tenure || 'N/A'}</span> | Amount: <span className="text-blue-600 dark:text-blue-300 font-semibold">{(item as any).amount || 'N/A'}</span></span>
                             )}
-                            {(tab.id === 'Insurance' || tab.title.includes('Insurance')) && (
+                            {(tab.id === 'Insurance' || tab.title.toLowerCase().includes('insurance')) && (
                               <span>Coverage: <span className="text-blue-600 dark:text-blue-300 font-semibold">{(item as any).coverage || 'N/A'}</span> | Premium: <span className="text-blue-600 dark:text-blue-300 font-semibold">{(item as any).premium || 'N/A'}</span> | Features: <span className="text-blue-600 dark:text-blue-300">{(item as any).features || 'N/A'}</span></span>
                             )}
-                            {(tab.id === 'Investment' || tab.title.includes('Investment')) && (
+                            {(tab.id === 'Investment' || tab.title.toLowerCase().includes('investment')) && (
                               <span>Returns: <span className="text-blue-600 dark:text-blue-300 font-semibold">{(item as any).returns || 'N/A'}</span> | Risk: <span className="text-blue-600 dark:text-blue-300 font-semibold">{(item as any).risk || 'N/A'}</span> | Features: <span className="text-blue-600 dark:text-blue-300">{(item as any).features || 'N/A'}</span></span>
                             )}
-                            {(tab.id === 'Property' || tab.title.includes('Property')) && (
+                            {(tab.id === 'Property' || tab.title.toLowerCase().includes('property')) && (
                               <span>Service: <span className="text-blue-600 dark:text-blue-300 font-semibold">{(item as any).service || 'N/A'}</span> | {(item as any).commission ? 'Commission' : 'Fee'}: <span className="text-blue-600 dark:text-blue-300 font-semibold">{(item as any).commission || (item as any).fee || 'N/A'}</span> | Features: <span className="text-blue-600 dark:text-blue-300">{(item as any).features || 'N/A'}</span></span>
                             )}
                           </div>
                         </div>
                       );
                     })}
-                    {tab.data.length === 0 && (
-                      <div className="py-20 text-center text-muted-foreground opacity-50">
-                        <p>No products found in this category.</p>
-                      </div>
-                    )}
                   </div>
                 )
               ))}

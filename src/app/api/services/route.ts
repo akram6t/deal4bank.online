@@ -37,7 +37,7 @@ export async function GET() {
     }));
 
     return NextResponse.json({
-      heading: "Explore Our Financial Products",
+      heading: "Our Services and rates:-",
       tabs: tabs
     });
   } catch (error: any) {

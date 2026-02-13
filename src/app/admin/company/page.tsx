@@ -1,4 +1,3 @@
-
 "use client"
 
 import { useState, useEffect } from 'react';
@@ -10,7 +9,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
-import { Upload, Building2, Save } from 'lucide-react';
+import { Upload, Building2, Save, Phone, Mail, MessageSquare } from 'lucide-react';
 
 export default function CompanyPage() {
   const [loading, setLoading] = useState(false);
@@ -18,15 +17,31 @@ export default function CompanyPage() {
     name: '',
     tagline: '',
     logoUrl: '',
-    copyright: ''
+    copyright: '',
+    phone: '',
+    whatsapp: '',
+    email: ''
   });
   const { toast } = useToast();
 
   useEffect(() => {
     async function loadSettings() {
-      const snap = await getDoc(doc(db, 'settings', 'company'));
-      if (snap.exists()) {
-        setFormData(snap.data() as any);
+      try {
+        const snap = await getDoc(doc(db, 'settings', 'company'));
+        if (snap.exists()) {
+          const data = snap.data();
+          setFormData({
+            name: data.name || '',
+            tagline: data.tagline || '',
+            logoUrl: data.logoUrl || '',
+            copyright: data.copyright || '',
+            phone: data.phone || '',
+            whatsapp: data.whatsapp || '',
+            email: data.email || ''
+          });
+        }
+      } catch (err) {
+        console.error("Failed to load company settings:", err);
       }
     }
     loadSettings();
@@ -64,13 +79,13 @@ export default function CompanyPage() {
   };
 
   return (
-    <div className="max-w-4xl space-y-8 animate-in fade-in duration-500">
+    <div className="max-w-4xl space-y-8 animate-in fade-in duration-500 pb-20">
       <div>
         <h1 className="text-3xl font-headline font-bold">Company Profile</h1>
-        <p className="text-muted-foreground mt-1">Configure your organization's core details.</p>
+        <p className="text-muted-foreground mt-1">Configure your organization's core details and contact information.</p>
       </div>
 
-      <form onSubmit={handleSave}>
+      <form onSubmit={handleSave} className="space-y-8">
         <div className="grid gap-8">
           <Card>
             <CardHeader>
@@ -123,6 +138,51 @@ export default function CompanyPage() {
                       <p className="text-[10px] text-muted-foreground">PNG, SVG or WebP up to 2MB</p>
                     </div>
                   </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Contact Information</CardTitle>
+              <CardDescription>Public contact details for customer service.</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <div className="grid md:grid-cols-2 gap-6">
+                <div className="space-y-2">
+                  <Label htmlFor="phone" className="flex items-center gap-2">
+                    <Phone className="h-4 w-4 text-primary" /> Phone Number
+                  </Label>
+                  <Input 
+                    id="phone" 
+                    value={formData.phone}
+                    onChange={(e) => setFormData(prev => ({ ...prev, phone: e.target.value }))}
+                    placeholder="+91-9243956990"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="whatsapp" className="flex items-center gap-2">
+                    <MessageSquare className="h-4 w-4 text-green-500" /> WhatsApp Number (without +91)
+                  </Label>
+                  <Input 
+                    id="whatsapp" 
+                    value={formData.whatsapp}
+                    onChange={(e) => setFormData(prev => ({ ...prev, whatsapp: e.target.value }))}
+                    placeholder="9243956990"
+                  />
+                </div>
+                <div className="md:col-span-2 space-y-2">
+                  <Label htmlFor="email" className="flex items-center gap-2">
+                    <Mail className="h-4 w-4 text-blue-500" /> Public Email Address
+                  </Label>
+                  <Input 
+                    id="email" 
+                    type="email"
+                    value={formData.email}
+                    onChange={(e) => setFormData(prev => ({ ...prev, email: e.target.value }))}
+                    placeholder="info@deal4bank.online"
+                  />
                 </div>
               </div>
             </CardContent>

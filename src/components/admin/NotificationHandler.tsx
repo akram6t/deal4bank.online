@@ -1,4 +1,3 @@
-
 "use client"
 
 import { useEffect, useState } from 'react';
@@ -17,7 +16,7 @@ export function NotificationHandler() {
     // Request Browser Notification Permission
     if (typeof window !== 'undefined' && "Notification" in window) {
       if (Notification.permission !== "granted" && Notification.permission !== "denied") {
-        Notification.requestPermission();
+        Notification.requestPermission().catch(() => {});
       }
     }
 
@@ -47,18 +46,23 @@ export function NotificationHandler() {
           });
 
           // Browser Notification
-          if (Notification.permission === "granted") {
-            new Notification(data.title, {
-              body: data.message,
-              icon: '/favicon.ico' // Ensure you have a favicon or use a generic icon
-            });
-            
-            // Play Sound
-            const audio = new Audio('https://assets.mixkit.co/active_storage/sfx/2358/2358-preview.mp3');
-            audio.play().catch(e => console.log("Audio play blocked by browser"));
+          if (typeof window !== 'undefined' && Notification.permission === "granted") {
+            try {
+              new Notification(data.title, {
+                body: data.message,
+              });
+              
+              // Play Sound with safety check
+              const audio = new Audio('https://assets.mixkit.co/active_storage/sfx/2358/2358-preview.mp3');
+              audio.play().catch(e => console.log("Audio play blocked or unreachable"));
+            } catch (err) {
+              console.warn("Notification display failed", err);
+            }
           }
         }
       });
+    }, (error) => {
+      console.warn("Firestore notification listener error:", error);
     });
 
     return () => unsubscribe();

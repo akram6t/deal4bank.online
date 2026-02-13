@@ -63,6 +63,13 @@ import ReactMarkdown from 'react-markdown';
 import { cn } from "@/lib/utils";
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 
+// Tiptap Rich Text Editor Imports
+import { useEditor, EditorContent } from '@tiptap/react';
+import StarterKit from '@tiptap/starter-kit';
+import Placeholder from '@tiptap/extension-placeholder';
+import UnderlineExtension from '@tiptap/extension-underline';
+import LinkExtension from '@tiptap/extension-link';
+
 interface Email {
   id: string;
   from: string;
@@ -128,14 +135,37 @@ export default function EmailPage() {
   
   const [replyOpen, setReplyOpen] = useState(false);
   const [composeOpen, setComposeOpen] = useState(false);
+  const [composeState, setComposeState] = useState<'default' | 'minimized' | 'maximized'>('default');
   const [sendingEmail, setSendingEmail] = useState(false);
   
   const [replyBody, setReplyBody] = useState('');
-  const [composeData, setComposeData] = useState({ to: '', subject: '', body: '' });
+  const [composeData, setComposeData] = useState({ to: '', subject: '' });
   const [showAiPrompt, setShowAiPrompt] = useState(false);
 
   const { toast } = useToast();
-  const bodyRef = useRef<HTMLTextAreaElement>(null);
+
+  // Tiptap Editor Initialization
+  const editor = useEditor({
+    extensions: [
+      StarterKit,
+      UnderlineExtension,
+      LinkExtension.configure({
+        openOnClick: false,
+      }),
+      Placeholder.configure({
+        placeholder: "Press / for Help me write",
+      }),
+    ],
+    content: '',
+    onUpdate: ({ editor }) => {
+      const text = editor.getText();
+      if (text.endsWith('/')) {
+        setShowAiPrompt(true);
+      } else {
+        setShowAiPrompt(false);
+      }
+    },
+  });
 
   useEffect(() => {
     const q = query(collection(db, 'emails'), orderBy('createdAt', 'desc'));
@@ -202,15 +232,18 @@ export default function EmailPage() {
     }
   };
 
-  const handleRefineTone = async (text: string, setter: (val: string) => void) => {
+  const handleRefineToneFromEditor = async () => {
+    if (!editor) return;
+    const text = editor.getText();
     if (!text) return;
+    
     setRefining(true);
     try {
       const result = await refineEmailTone({ 
         emailContent: text, 
         desiredTone: 'professional, empathetic and clear' 
       });
-      setter(result.refinedContent);
+      editor.commands.setContent(result.refinedContent);
       setShowAiPrompt(false);
     } catch (err) {
       toast({ variant: 'destructive', title: 'AI Error', description: 'Failed to refine tone.' });
@@ -219,15 +252,20 @@ export default function EmailPage() {
     }
   };
 
-  const handleSend = async (to: string, subject: string, body: string, isReply: boolean = false) => {
+  const handleSend = async (to: string, subject: string, isReply: boolean = false) => {
+    if (!editor) return;
+    const bodyText = editor.getText();
+    const bodyHtml = editor.getHTML();
+    
     setSendingEmail(true);
     try {
-      await sendEmailAction({ to, subject, text: body });
+      await sendEmailAction({ to, subject, text: bodyText, html: bodyHtml });
       await addDoc(collection(db, 'emails'), {
         from: 'admin@deal4bank.com',
         to,
         subject,
-        body,
+        body: bodyText,
+        html: bodyHtml,
         status: 'sent',
         read: true,
         starred: false,
@@ -239,7 +277,8 @@ export default function EmailPage() {
         setReplyBody('');
       } else {
         setComposeOpen(false);
-        setComposeData({ to: '', subject: '', body: '' });
+        setComposeData({ to: '', subject: '' });
+        editor.commands.setContent('');
       }
       toast({ title: "Email Sent", description: `Message delivered to ${to}` });
     } catch (err: any) {
@@ -249,155 +288,23 @@ export default function EmailPage() {
     }
   };
 
-  const handleComposeBodyChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    const val = e.target.value;
-    setComposeData(prev => ({ ...prev, body: val }));
-    
-    // Slash command trigger
-    if (val.endsWith('/')) {
-      setShowAiPrompt(true);
-    } else {
-      setShowAiPrompt(false);
-    }
-  };
-
   return (
-    <div className="h-[calc(100vh-140px)] flex flex-col space-y-4">
+    <div className="h-[calc(100vh-140px)] flex flex-col space-y-4 relative">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-headline font-bold text-foreground">Communications</h1>
           <p className="text-muted-foreground text-sm">Manage your inbox and client communications.</p>
         </div>
         
-        <Dialog open={composeOpen} onOpenChange={setComposeOpen}>
-          <DialogTrigger asChild>
-            <Button className="shadow-md rounded-full px-6 bg-primary hover:bg-primary/90">
-              <Plus className="mr-2 h-5 w-5" /> Compose
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="max-w-4xl p-0 overflow-hidden border-none shadow-2xl rounded-xl">
-            <div className="bg-slate-900 text-white flex items-center justify-between px-4 py-3">
-              <DialogTitle className="text-sm font-bold">New Message</DialogTitle>
-              <div className="flex items-center gap-2 opacity-70">
-                <Minus className="h-4 w-4 cursor-pointer hover:opacity-100" />
-                <Maximize2 className="h-3.5 w-3.5 cursor-pointer hover:opacity-100" />
-                <X className="h-4 w-4 cursor-pointer hover:opacity-100" onClick={() => setComposeOpen(false)} />
-              </div>
-            </div>
-            
-            <div className="flex flex-col bg-white dark:bg-neutral-950">
-              <div className="px-4 py-1 border-b border-muted">
-                <div className="flex items-center gap-3 py-2">
-                  <span className="text-sm text-muted-foreground min-w-[60px]">To</span>
-                  <Input 
-                    placeholder="Recipients" 
-                    variant="ghost"
-                    className="border-none shadow-none h-8 px-0 focus-visible:ring-0 text-sm"
-                    value={composeData.to} 
-                    onChange={e => setComposeData(prev => ({ ...prev, to: e.target.value }))} 
-                  />
-                </div>
-              </div>
-              <div className="px-4 py-1 border-b border-muted">
-                <Input 
-                  placeholder="Subject" 
-                  variant="ghost"
-                  className="border-none shadow-none h-10 px-0 focus-visible:ring-0 text-base font-medium"
-                  value={composeData.subject} 
-                  onChange={e => setComposeData(prev => ({ ...prev, subject: e.target.value }))} 
-                />
-              </div>
-              
-              <div className="relative">
-                <Textarea 
-                  ref={bodyRef}
-                  placeholder="Press / for Help me write"
-                  className="min-h-[400px] border-none shadow-none focus-visible:ring-0 resize-none p-4 text-base leading-relaxed"
-                  value={composeData.body}
-                  onChange={handleComposeBodyChange}
-                />
-                
-                {showAiPrompt && (
-                  <div className="absolute left-4 top-12 z-50">
-                    <div className="bg-white dark:bg-neutral-900 border rounded-lg shadow-xl p-1 animate-in slide-in-from-top-2 duration-200">
-                      <Button 
-                        variant="ghost" 
-                        size="sm" 
-                        className="w-full justify-start text-xs font-bold text-primary gap-2"
-                        onClick={() => handleRefineTone(composeData.body, (v) => setComposeData(p => ({...p, body: v})))}
-                        disabled={refining}
-                      >
-                        <Sparkles className="h-3 w-3" />
-                        {refining ? 'Refining...' : 'Help me write'}
-                      </Button>
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              {/* Rich Text Toolbar */}
-              <div className="px-4 py-2 bg-slate-50 dark:bg-neutral-900 border-t flex flex-wrap items-center gap-1">
-                <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground"><Undo className="h-4 w-4" /></Button>
-                <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground"><Redo className="h-4 w-4" /></Button>
-                <div className="h-4 w-px bg-muted mx-1" />
-                <Button variant="ghost" className="h-8 px-2 text-xs font-medium text-muted-foreground gap-1">Sans Serif <ChevronDown className="h-3 w-3" /></Button>
-                <div className="h-4 w-px bg-muted mx-1" />
-                <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground"><Type className="h-4 w-4" /></Button>
-                <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground"><Bold className="h-4 w-4" /></Button>
-                <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground"><Italic className="h-4 w-4" /></Button>
-                <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground"><Underline className="h-4 w-4" /></Button>
-                <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground"><Palette className="h-4 w-4" /></Button>
-                <div className="h-4 w-px bg-muted mx-1" />
-                <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground"><AlignLeft className="h-4 w-4" /></Button>
-                <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground"><ListOrdered className="h-4 w-4" /></Button>
-                <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground"><List className="h-4 w-4" /></Button>
-                <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground"><Quote className="h-4 w-4" /></Button>
-                <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground"><Strikethrough className="h-4 w-4" /></Button>
-                <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground"><Eraser className="h-4 w-4" /></Button>
-              </div>
-
-              {/* Bottom Action Bar */}
-              <div className="px-4 py-3 flex items-center justify-between border-t bg-white dark:bg-neutral-950">
-                <div className="flex items-center gap-2">
-                  <div className="flex">
-                    <Button 
-                      className="rounded-l-full rounded-r-none px-6 h-10 bg-blue-600 hover:bg-blue-700 text-sm font-bold"
-                      onClick={() => handleSend(composeData.to, composeData.subject, composeData.body)}
-                      disabled={sendingEmail || !composeData.to}
-                    >
-                      {sendingEmail ? 'Sending...' : 'Send'}
-                    </Button>
-                    <div className="w-px bg-blue-700 h-10" />
-                    <Button className="rounded-r-full rounded-l-none h-10 w-8 px-0 bg-blue-600 hover:bg-blue-700">
-                      <ChevronDown className="h-4 w-4" />
-                    </Button>
-                  </div>
-                  
-                  <div className="flex items-center gap-1 ml-2">
-                    <Button variant="ghost" size="icon" className="h-9 w-9 rounded-full text-muted-foreground hover:bg-muted/50"><Type className="h-5 w-5" /></Button>
-                    <Button variant="ghost" size="icon" className="h-9 w-9 rounded-full text-muted-foreground hover:bg-muted/50"><Paperclip className="h-5 w-5" /></Button>
-                    <Button variant="ghost" size="icon" className="h-9 w-9 rounded-full text-muted-foreground hover:bg-muted/50"><Link2 className="h-5 w-5" /></Button>
-                    <Button variant="ghost" size="icon" className="h-9 w-9 rounded-full text-muted-foreground hover:bg-muted/50"><Smile className="h-5 w-5" /></Button>
-                    <Button variant="ghost" size="icon" className="h-9 w-9 rounded-full text-muted-foreground hover:bg-muted/50"><HardDrive className="h-5 w-5" /></Button>
-                    <Button variant="ghost" size="icon" className="h-9 w-9 rounded-full text-muted-foreground hover:bg-muted/50"><ImageIcon className="h-5 w-5" /></Button>
-                    <Button variant="ghost" size="icon" className="h-9 w-9 rounded-full text-muted-foreground hover:bg-muted/50"><Lock className="h-5 w-5" /></Button>
-                    <Button variant="ghost" size="icon" className="h-9 w-9 rounded-full text-muted-foreground hover:bg-muted/50"><PenLine className="h-5 w-5" /></Button>
-                    <Button variant="ghost" size="icon" className="h-9 w-9 rounded-full text-muted-foreground hover:bg-muted/50"><MoreVertical className="h-5 w-5" /></Button>
-                  </div>
-                </div>
-                
-                <Button 
-                  variant="ghost" 
-                  size="icon" 
-                  className="h-9 w-9 rounded-full text-muted-foreground hover:text-destructive hover:bg-destructive/10"
-                  onClick={() => setComposeData({ to: '', subject: '', body: '' })}
-                >
-                  <Trash2 className="h-5 w-5" />
-                </Button>
-              </div>
-            </div>
-          </DialogContent>
-        </Dialog>
+        <Button 
+          onClick={() => {
+            setComposeOpen(true);
+            setComposeState('default');
+          }}
+          className="shadow-md rounded-full px-6 bg-primary hover:bg-primary/90"
+        >
+          <Plus className="mr-2 h-5 w-5" /> Compose
+        </Button>
       </div>
 
       <Tabs value={activeTab} onValueChange={(val: any) => setActiveTab(val)} className="w-full flex-1 flex flex-col">
@@ -555,36 +462,17 @@ export default function EmailPage() {
                 </ScrollArea>
 
                 <div className="p-4 border-t bg-muted/5 flex items-center gap-3">
-                  <Dialog open={replyOpen} onOpenChange={setReplyOpen}>
-                    <DialogTrigger asChild>
-                      <Button className="flex-1 rounded-full py-6"><Reply className="mr-2 h-4 w-4" /> Reply</Button>
-                    </DialogTrigger>
-                    <DialogContent className="max-w-3xl">
-                      <DialogHeader><DialogTitle>Reply to {selectedEmail.from}</DialogTitle></DialogHeader>
-                      <div className="space-y-4 py-4">
-                        <Tabs defaultValue="edit">
-                          <TabsList className="grid grid-cols-2 mb-2">
-                            <TabsTrigger value="edit">Write</TabsTrigger>
-                            <TabsTrigger value="preview">Preview</TabsTrigger>
-                          </TabsList>
-                          <TabsContent value="edit">
-                            <Textarea className="min-h-[250px] font-mono" value={replyBody} onChange={(e) => setReplyBody(e.target.value)} />
-                          </TabsContent>
-                          <TabsContent value="preview" className="min-h-[250px] p-4 border rounded-md prose prose-sm dark:prose-invert max-w-none bg-muted/5">
-                            <ReactMarkdown>{replyBody || "*No content to preview*"}</ReactMarkdown>
-                          </TabsContent>
-                        </Tabs>
-                        <Button variant="outline" size="sm" onClick={() => handleRefineTone(replyBody, setReplyBody)} disabled={refining || !replyBody}>
-                          <Sparkles className="mr-2 h-3 w-3" /> {refining ? 'Refining...' : 'Refine Tone'}
-                        </Button>
-                      </div>
-                      <DialogFooter>
-                        <Button onClick={() => handleSend(selectedEmail.from, `Re: ${selectedEmail.subject}`, replyBody, true)} disabled={sendingEmail || !replyBody}>
-                          {sendingEmail ? 'Sending...' : 'Send Reply'}
-                        </Button>
-                      </DialogFooter>
-                    </DialogContent>
-                  </Dialog>
+                  <Button 
+                    className="flex-1 rounded-full py-6"
+                    onClick={() => {
+                      setComposeData({ to: selectedEmail.from, subject: `Re: ${selectedEmail.subject}` });
+                      editor?.commands.setContent(`<p><br><br></p><hr><p>On ${format(new Date(selectedEmail.createdAt.seconds * 1000), 'MMM d, yyyy')} ${selectedEmail.from} wrote:</p><blockquote>${selectedEmail.body}</blockquote>`);
+                      setComposeOpen(true);
+                      setComposeState('default');
+                    }}
+                  >
+                    <Reply className="mr-2 h-4 w-4" /> Reply
+                  </Button>
                   <Button variant="outline" className="flex-1 rounded-full py-6">Forward <ArrowRight className="ml-2 h-3 w-3" /></Button>
                 </div>
               </div>
@@ -596,7 +484,201 @@ export default function EmailPage() {
             )}
           </div>
         </div>
-      </Tabs>
+      </ScrollArea>
+
+      {/* Gmail-style Compose Modal */}
+      {composeOpen && (
+        <div className={cn(
+          "fixed z-[100] transition-all duration-300 shadow-2xl flex flex-col bg-white dark:bg-neutral-950 overflow-hidden",
+          composeState === 'default' && "bottom-0 right-12 w-[600px] h-[600px] rounded-t-xl border border-muted",
+          composeState === 'maximized' && "inset-0 w-full h-full",
+          composeState === 'minimized' && "bottom-0 right-12 w-80 h-12 rounded-t-xl border border-muted"
+        )}>
+          {/* Header */}
+          <div className="bg-slate-900 text-white flex items-center justify-between px-4 py-3 shrink-0 cursor-pointer" onClick={() => composeState === 'minimized' && setComposeState('default')}>
+            <span className="text-sm font-bold">New Message</span>
+            <div className="flex items-center gap-3 opacity-70">
+              <Minus 
+                className="h-4 w-4 cursor-pointer hover:opacity-100" 
+                onClick={(e) => { e.stopPropagation(); setComposeState('minimized'); }} 
+              />
+              {composeState === 'maximized' ? (
+                <Minimize2 
+                  className="h-3.5 w-3.5 cursor-pointer hover:opacity-100" 
+                  onClick={(e) => { e.stopPropagation(); setComposeState('default'); }} 
+                />
+              ) : (
+                <Maximize2 
+                  className="h-3.5 w-3.5 cursor-pointer hover:opacity-100" 
+                  onClick={(e) => { e.stopPropagation(); setComposeState('maximized'); }} 
+                />
+              )}
+              <X 
+                className="h-4 w-4 cursor-pointer hover:opacity-100" 
+                onClick={(e) => { e.stopPropagation(); setComposeOpen(false); }} 
+              />
+            </div>
+          </div>
+
+          {composeState !== 'minimized' && (
+            <>
+              {/* Fields */}
+              <div className="flex flex-col shrink-0 bg-white dark:bg-neutral-950">
+                <div className="px-4 py-1 border-b border-muted">
+                  <div className="flex items-center gap-3 py-2">
+                    <span className="text-sm text-muted-foreground min-w-[60px]">To</span>
+                    <Input 
+                      placeholder="Recipients" 
+                      className="border-none shadow-none h-8 px-0 focus-visible:ring-0 text-sm bg-transparent"
+                      value={composeData.to} 
+                      onChange={e => setComposeData(prev => ({ ...prev, to: e.target.value }))} 
+                    />
+                  </div>
+                </div>
+                <div className="px-4 py-1 border-b border-muted">
+                  <Input 
+                    placeholder="Subject" 
+                    className="border-none shadow-none h-10 px-0 focus-visible:ring-0 text-base font-medium bg-transparent"
+                    value={composeData.subject} 
+                    onChange={e => setComposeData(prev => ({ ...prev, subject: e.target.value }))} 
+                  />
+                </div>
+              </div>
+              
+              {/* Editor Content */}
+              <ScrollArea className="flex-1 bg-white dark:bg-neutral-950 p-4 relative">
+                <div className="prose prose-sm dark:prose-invert max-w-none min-h-[300px]">
+                  <EditorContent editor={editor} />
+                </div>
+                
+                {showAiPrompt && (
+                  <div className="absolute left-4 bottom-4 z-50">
+                    <div className="bg-white dark:bg-neutral-900 border rounded-lg shadow-xl p-1 animate-in slide-in-from-bottom-2 duration-200">
+                      <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        className="w-full justify-start text-xs font-bold text-primary gap-2"
+                        onClick={handleRefineToneFromEditor}
+                        disabled={refining}
+                      >
+                        <Sparkles className="h-3 w-3" />
+                        {refining ? 'Refining...' : 'Help me write'}
+                      </Button>
+                    </div>
+                  </div>
+                )}
+              </ScrollArea>
+
+              {/* Rich Text Toolbar */}
+              <div className="px-4 py-2 bg-slate-50 dark:bg-neutral-900 border-t flex flex-wrap items-center gap-1 shrink-0">
+                <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground" onClick={() => editor?.chain().focus().undo().run()}><Undo className="h-4 w-4" /></Button>
+                <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground" onClick={() => editor?.chain().focus().redo().run()}><Redo className="h-4 w-4" /></Button>
+                <div className="h-4 w-px bg-muted mx-1" />
+                <Button 
+                  variant="ghost" 
+                  size="icon" 
+                  className={cn("h-8 w-8 text-muted-foreground", editor?.isActive('bold') && "bg-muted text-primary")}
+                  onClick={() => editor?.chain().focus().toggleBold().run()}
+                >
+                  <Bold className="h-4 w-4" />
+                </Button>
+                <Button 
+                  variant="ghost" 
+                  size="icon" 
+                  className={cn("h-8 w-8 text-muted-foreground", editor?.isActive('italic') && "bg-muted text-primary")}
+                  onClick={() => editor?.chain().focus().toggleItalic().run()}
+                >
+                  <Italic className="h-4 w-4" />
+                </Button>
+                <Button 
+                  variant="ghost" 
+                  size="icon" 
+                  className={cn("h-8 w-8 text-muted-foreground", editor?.isActive('underline') && "bg-muted text-primary")}
+                  onClick={() => editor?.chain().focus().toggleUnderline().run()}
+                >
+                  <Underline className="h-4 w-4" />
+                </Button>
+                <div className="h-4 w-px bg-muted mx-1" />
+                <Button 
+                  variant="ghost" 
+                  size="icon" 
+                  className={cn("h-8 w-8 text-muted-foreground", editor?.isActive('bulletList') && "bg-muted text-primary")}
+                  onClick={() => editor?.chain().focus().toggleBulletList().run()}
+                >
+                  <List className="h-4 w-4" />
+                </Button>
+                <Button 
+                  variant="ghost" 
+                  size="icon" 
+                  className={cn("h-8 w-8 text-muted-foreground", editor?.isActive('orderedList') && "bg-muted text-primary")}
+                  onClick={() => editor?.chain().focus().toggleOrderedList().run()}
+                >
+                  <ListOrdered className="h-4 w-4" />
+                </Button>
+                <Button 
+                  variant="ghost" 
+                  size="icon" 
+                  className={cn("h-8 w-8 text-muted-foreground", editor?.isActive('blockquote') && "bg-muted text-primary")}
+                  onClick={() => editor?.chain().focus().toggleBlockquote().run()}
+                >
+                  <Quote className="h-4 w-4" />
+                </Button>
+                <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground" onClick={() => editor?.chain().focus().unsetAllMarks().run()}><Eraser className="h-4 w-4" /></Button>
+              </div>
+
+              {/* Bottom Action Bar */}
+              <div className="px-4 py-3 flex items-center justify-between border-t bg-white dark:bg-neutral-950 shrink-0">
+                <div className="flex items-center gap-2">
+                  <div className="flex">
+                    <Button 
+                      className="rounded-l-full rounded-r-none px-6 h-10 bg-blue-600 hover:bg-blue-700 text-sm font-bold text-white"
+                      onClick={() => handleSend(composeData.to, composeData.subject)}
+                      disabled={sendingEmail || !composeData.to}
+                    >
+                      {sendingEmail ? 'Sending...' : 'Send'}
+                    </Button>
+                    <div className="w-px bg-blue-700 h-10" />
+                    <Button className="rounded-r-full rounded-l-none h-10 w-8 px-0 bg-blue-600 hover:bg-blue-700 text-white">
+                      <ChevronDown className="h-4 w-4" />
+                    </Button>
+                  </div>
+                  
+                  <div className="flex items-center gap-1 ml-2">
+                    <Button 
+                      variant="ghost" 
+                      size="icon" 
+                      className="h-9 w-9 rounded-full text-primary hover:bg-primary/10"
+                      onClick={handleRefineToneFromEditor}
+                      disabled={refining}
+                    >
+                      <Sparkles className={cn("h-5 w-5", refining && "animate-pulse")} />
+                    </Button>
+                    <Button variant="ghost" size="icon" className="h-9 w-9 rounded-full text-muted-foreground hover:bg-muted/50"><Paperclip className="h-5 w-5" /></Button>
+                    <Button variant="ghost" size="icon" className="h-9 w-9 rounded-full text-muted-foreground hover:bg-muted/50"><Link2 className="h-5 w-5" /></Button>
+                    <Button variant="ghost" size="icon" className="h-9 w-9 rounded-full text-muted-foreground hover:bg-muted/50"><Smile className="h-5 w-5" /></Button>
+                    <Button variant="ghost" size="icon" className="h-9 w-9 rounded-full text-muted-foreground hover:bg-muted/50"><HardDrive className="h-5 w-5" /></Button>
+                    <Button variant="ghost" size="icon" className="h-9 w-9 rounded-full text-muted-foreground hover:bg-muted/50"><ImageIcon className="h-5 w-5" /></Button>
+                    <Button variant="ghost" size="icon" className="h-9 w-9 rounded-full text-muted-foreground hover:bg-muted/50"><Lock className="h-5 w-5" /></Button>
+                    <Button variant="ghost" size="icon" className="h-9 w-9 rounded-full text-muted-foreground hover:bg-muted/50"><MoreVertical className="h-5 w-5" /></Button>
+                  </div>
+                </div>
+                
+                <Button 
+                  variant="ghost" 
+                  size="icon" 
+                  className="h-9 w-9 rounded-full text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+                  onClick={() => {
+                    editor?.commands.setContent('');
+                    setComposeData({ to: '', subject: '' });
+                  }}
+                >
+                  <Trash2 className="h-5 w-5" />
+                </Button>
+              </div>
+            </>
+          )}
+        </div>
+      )}
     </div>
   );
 }

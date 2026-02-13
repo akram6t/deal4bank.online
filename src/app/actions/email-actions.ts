@@ -1,3 +1,4 @@
+
 'use server';
 
 import { Resend } from 'resend';
@@ -8,9 +9,10 @@ interface SendEmailParams {
   to: string;
   subject: string;
   text: string;
+  html?: string;
 }
 
-export async function sendEmailAction({ to, subject, text }: SendEmailParams) {
+export async function sendEmailAction({ to, subject, text, html }: SendEmailParams) {
   if (!process.env.RESEND_API_KEY) {
     throw new Error('RESEND_API_KEY is not configured');
   }
@@ -21,6 +23,7 @@ export async function sendEmailAction({ to, subject, text }: SendEmailParams) {
       to: [to],
       subject: subject,
       text: text,
+      html: html,
     });
 
     if (error) {

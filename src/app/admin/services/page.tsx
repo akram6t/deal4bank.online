@@ -10,28 +10,34 @@ import {
   EyeOff, 
   Edit, 
   Trash2, 
-  Save, 
-  X, 
   LayoutGrid,
   CreditCard,
   Shield,
   Briefcase,
   Home,
-  ArrowUp,
-  ArrowDown,
-  Settings2
+  Settings2,
+  User,
+  Car,
+  Building,
+  Landmark,
+  X,
+  Type
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import { Switch } from '@/components/ui/switch';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { cn } from "@/lib/utils";
+
+interface ServiceAttribute {
+  label: string;
+  value: string;
+}
 
 interface ServiceTab {
   id: string;
@@ -48,15 +54,25 @@ interface ServiceItem {
   description: string;
   order: number;
   visible: boolean;
-  ctaText?: string;
+  iconName: string;
+  attributes: ServiceAttribute[];
 }
 
-const ICON_OPTIONS = [
+const CATEGORY_ICONS = [
   { name: 'CreditCard', icon: CreditCard },
   { name: 'Shield', icon: Shield },
   { name: 'Briefcase', icon: Briefcase },
   { name: 'Home', icon: Home },
-  { name: 'LayoutGrid', icon: LayoutGrid },
+  { name: 'Landmark', icon: Landmark },
+];
+
+const ITEM_ICONS = [
+  { name: 'User', icon: User },
+  { name: 'Home', icon: Home },
+  { name: 'Building', icon: Building },
+  { name: 'Car', icon: Car },
+  { name: 'Landmark', icon: Landmark },
+  { name: 'CreditCard', icon: CreditCard },
 ];
 
 export default function ServicesPage() {
@@ -64,7 +80,6 @@ export default function ServicesPage() {
   const [items, setItems] = useState<ServiceItem[]>([]);
   const [activeTab, setActiveTab] = useState<string>('');
   
-  // Modals state
   const [tabModalOpen, setTabModalOpen] = useState(false);
   const [itemModalOpen, setItemModalOpen] = useState(false);
   const [editingTab, setEditingTab] = useState<Partial<ServiceTab> | null>(null);
@@ -74,19 +89,18 @@ export default function ServicesPage() {
   const { toast } = useToast();
 
   useEffect(() => {
-    const qTabs = query(collection(db, 'services/tabs/list'), orderBy('order', 'asc'));
+    const qTabs = query(collection(db, 'services_tabs'), orderBy('order', 'asc'));
     const unsubTabs = onSnapshot(qTabs, (snapshot) => {
       const tabList = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as ServiceTab[];
       setTabs(tabList);
       if (tabList.length > 0 && !activeTab) setActiveTab(tabList[0].id);
     });
-
     return () => unsubTabs();
   }, [activeTab]);
 
   useEffect(() => {
     if (!activeTab) return;
-    const qItems = query(collection(db, `services/tabs/list/${activeTab}/items`), orderBy('order', 'asc'));
+    const qItems = query(collection(db, `services_tabs/${activeTab}/items`), orderBy('order', 'asc'));
     const unsubItems = onSnapshot(qItems, (snapshot) => {
       const itemList = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as ServiceItem[];
       setItems(itemList);
@@ -94,73 +108,45 @@ export default function ServicesPage() {
     return () => unsubItems();
   }, [activeTab]);
 
-  const handleToggleTabVisibility = async (tab: ServiceTab) => {
-    await updateDoc(doc(db, 'services/tabs/list', tab.id), { visible: !tab.visible });
-    toast({ title: `Tab ${tab.visible ? 'hidden' : 'visible'}` });
+  const getIcon = (name: string, list: {name: string, icon: any}[]) => {
+    const found = list.find(i => i.name === name);
+    return found ? found.icon : LayoutGrid;
   };
 
-  const handleToggleItemVisibility = async (item: ServiceItem) => {
-    await updateDoc(doc(db, `services/tabs/list/${activeTab}/items`, item.id), { visible: !item.visible });
-    toast({ title: `Item ${item.visible ? 'hidden' : 'visible'}` });
-  };
-
-  // Tab CRUD
-  const openTabModal = (tab?: ServiceTab) => {
-    setEditingTab(tab || { name: '', icon: 'LayoutGrid', order: tabs.length, visible: true });
-    setTabModalOpen(true);
-  };
-
-  const saveTab = async () => {
+  const handleSaveTab = async () => {
     if (!editingTab?.name) return;
     setLoading(true);
     try {
       if (editingTab.id) {
-        await updateDoc(doc(db, 'services/tabs/list', editingTab.id), editingTab);
-        toast({ title: "Tab updated" });
+        await updateDoc(doc(db, 'services_tabs', editingTab.id), editingTab);
       } else {
-        await addDoc(collection(db, 'services/tabs/list'), editingTab);
-        toast({ title: "Tab created" });
+        await addDoc(collection(db, 'services_tabs'), { ...editingTab, order: tabs.length, visible: true });
       }
       setTabModalOpen(false);
+      toast({ title: "Category saved" });
     } catch (err) {
-      toast({ variant: 'destructive', title: "Error saving tab" });
+      toast({ variant: 'destructive', title: "Error saving category" });
     } finally {
       setLoading(false);
     }
   };
 
-  const deleteTab = async (id: string) => {
-    if (!confirm("Are you sure? This will delete the category and items cannot be accessed easily.")) return;
-    await deleteDoc(doc(db, 'services/tabs/list', id));
-    if (activeTab === id) setActiveTab(tabs[0]?.id || '');
-    toast({ title: "Tab deleted" });
-  };
-
-  // Item CRUD
-  const openItemModal = (item?: ServiceItem) => {
-    setEditingItem(item || { 
-      title: '', 
-      description: '', 
-      order: items.length, 
-      visible: true, 
-      tabId: activeTab,
-      ctaText: 'Learn More'
-    });
-    setItemModalOpen(true);
-  };
-
-  const saveItem = async () => {
+  const handleSaveItem = async () => {
     if (!editingItem?.title || !activeTab) return;
     setLoading(true);
     try {
       if (editingItem.id) {
-        await updateDoc(doc(db, `services/tabs/list/${activeTab}/items`, editingItem.id), editingItem);
-        toast({ title: "Item updated" });
+        await updateDoc(doc(db, `services_tabs/${activeTab}/items`, editingItem.id), editingItem);
       } else {
-        await addDoc(collection(db, `services/tabs/list/${activeTab}/items`), editingItem);
-        toast({ title: "Item created" });
+        await addDoc(collection(db, `services_tabs/${activeTab}/items`), { 
+          ...editingItem, 
+          order: items.length, 
+          visible: true,
+          attributes: editingItem.attributes || []
+        });
       }
       setItemModalOpen(false);
+      toast({ title: "Service item saved" });
     } catch (err) {
       toast({ variant: 'destructive', title: "Error saving item" });
     } finally {
@@ -168,243 +154,224 @@ export default function ServicesPage() {
     }
   };
 
-  const deleteItem = async (id: string) => {
-    if (!confirm("Delete this service item?")) return;
-    await deleteDoc(doc(db, `services/tabs/list/${activeTab}/items`, id));
-    toast({ title: "Item deleted" });
+  const addAttribute = () => {
+    setEditingItem(prev => ({
+      ...prev!,
+      attributes: [...(prev?.attributes || []), { label: 'New Key', value: 'Value' }]
+    }));
   };
 
-  const getIconComponent = (name: string) => {
-    const option = ICON_OPTIONS.find(o => o.name === name);
-    return option ? option.icon : LayoutGrid;
+  const removeAttribute = (index: number) => {
+    setEditingItem(prev => ({
+      ...prev!,
+      attributes: prev?.attributes?.filter((_, i) => i !== index)
+    }));
+  };
+
+  const updateAttribute = (index: number, field: 'label' | 'value', val: string) => {
+    setEditingItem(prev => {
+      const newAttrs = [...(prev?.attributes || [])];
+      newAttrs[index][field] = val;
+      return { ...prev!, attributes: newAttrs };
+    });
   };
 
   return (
     <div className="space-y-8 animate-in fade-in duration-500">
-      <div className="flex justify-between items-start">
-        <div>
-          <h1 className="text-3xl font-headline font-bold">Services Management</h1>
-          <p className="text-muted-foreground mt-1 text-sm">Manage dynamic service categories and detailed offerings for your customers.</p>
-        </div>
-        <Button onClick={() => openTabModal()} className="shadow-lg"><Plus className="mr-2 h-4 w-4" /> Add Category</Button>
+      <div className="flex justify-between items-center">
+        <h1 className="text-3xl font-headline font-bold text-foreground">OUR SERVICES AND RATES:-</h1>
+        <Button onClick={() => { setEditingTab({ name: '', icon: 'Landmark' }); setTabModalOpen(true); }}>
+          <Plus className="mr-2 h-4 w-4" /> Add Category
+        </Button>
       </div>
 
-      <Card className="border-none shadow-none bg-transparent">
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-8">
-            <TabsList className="bg-muted/50 p-1 rounded-xl h-auto flex-wrap">
-              {tabs.map((tab) => {
-                const Icon = getIconComponent(tab.name === 'Investment' ? 'Briefcase' : (tab.name === 'Insurance' ? 'Shield' : (tab.name === 'Loans' ? 'CreditCard' : (tab.name === 'Property' ? 'Home' : tab.icon))));
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+        <div className="flex flex-wrap items-center gap-4 mb-8">
+          <TabsList className="bg-transparent h-auto p-0 flex flex-wrap gap-3">
+            {tabs.map((tab) => {
+              const Icon = getIcon(tab.icon, CATEGORY_ICONS);
+              return (
+                <TabsTrigger 
+                  key={tab.id} 
+                  value={tab.id} 
+                  className="data-[state=active]:bg-primary data-[state=active]:text-white bg-muted/40 border-2 border-transparent px-6 py-3 rounded-lg flex items-center gap-2 transition-all hover:bg-muted"
+                >
+                  <Icon className="h-4 w-4" />
+                  {tab.name}
+                </TabsTrigger>
+              );
+            })}
+          </TabsList>
+          
+          {activeTab && (
+            <div className="flex gap-2">
+              <Button variant="ghost" size="icon" onClick={() => { setEditingTab(tabs.find(t => t.id === activeTab)); setTabModalOpen(true); }}>
+                <Edit className="h-4 w-4" />
+              </Button>
+              <Button variant="ghost" size="icon" className="text-destructive" onClick={() => deleteDoc(doc(db, 'services_tabs', activeTab))}>
+                <Trash2 className="h-4 w-4" />
+              </Button>
+            </div>
+          )}
+        </div>
+
+        {tabs.map((tab) => (
+          <TabsContent key={tab.id} value={tab.id} className="space-y-4">
+            <div className="grid gap-4">
+              {items.map((item) => {
+                const ItemIcon = getIcon(item.iconName, ITEM_ICONS);
                 return (
-                  <TabsTrigger 
-                    key={tab.id} 
-                    value={tab.id} 
-                    className="flex items-center gap-2 px-4 py-2 rounded-lg data-[state=active]:shadow-md transition-all"
-                  >
-                    <Icon className="h-4 w-4" />
-                    {tab.name}
-                    {!tab.visible && <EyeOff className="h-3 w-3 text-destructive ml-1" />}
-                  </TabsTrigger>
-                );
-              })}
-            </TabsList>
-            
-            {activeTab && (
-              <div className="flex items-center gap-2">
-                <Button variant="outline" size="sm" onClick={() => openTabModal(tabs.find(t => t.id === activeTab))}>
-                  <Settings2 className="mr-2 h-4 w-4" /> Category Settings
-                </Button>
-                <Button variant="outline" size="sm" className="text-destructive hover:bg-destructive/10" onClick={() => deleteTab(activeTab)}>
-                  <Trash2 className="h-4 w-4" />
-                </Button>
-              </div>
-            )}
-          </div>
-
-          {tabs.map((tab) => (
-            <TabsContent key={tab.id} value={tab.id} className="space-y-6 mt-0">
-              <div className="flex justify-between items-center bg-card p-4 rounded-xl border border-dashed border-primary/20">
-                <div className="flex items-center gap-4">
-                  <div className="bg-primary/10 p-2 rounded-lg">
-                    {(() => {
-                        const Icon = getIconComponent(tab.icon);
-                        return <Icon className="h-5 w-5 text-primary" />;
-                    })()}
-                  </div>
-                  <div>
-                    <h3 className="font-headline font-semibold text-lg">{tab.name}</h3>
-                    <p className="text-xs text-muted-foreground">Category Items ({items.length})</p>
-                  </div>
-                </div>
-                <Button variant="secondary" onClick={() => openItemModal()}><Plus className="mr-2 h-4 w-4" /> Add Service</Button>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {items.map((item) => (
-                  <Card key={item.id} className={cn(
-                    "relative group flex flex-col h-full hover:border-primary/50 transition-all hover:shadow-lg", 
-                    !item.visible && "opacity-60 grayscale-[0.5]"
-                  )}>
-                    <CardHeader className="pb-3">
-                      <div className="flex justify-between items-start">
-                        <CardTitle className="text-xl leading-tight font-headline">{item.title}</CardTitle>
-                        <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleToggleItemVisibility(item)}>
-                            {item.visible ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
-                          </Button>
-                          <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => deleteItem(item.id)}>
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
+                  <Card key={item.id} className="bg-zinc-900 border-zinc-800 hover:border-zinc-700 transition-colors group">
+                    <CardContent className="p-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
+                      <div className="flex items-center gap-4">
+                        <div className="bg-primary/10 p-3 rounded-xl">
+                          <ItemIcon className="h-6 w-6 text-primary" />
+                        </div>
+                        <div>
+                          <h3 className="text-xl font-bold text-white">{item.title}</h3>
+                          <div className="flex flex-wrap items-center gap-x-2 text-sm text-zinc-400 mt-1">
+                            {item.attributes.map((attr, idx) => (
+                              <div key={idx} className="flex items-center">
+                                {idx > 0 && <span className="mx-2 text-zinc-600">|</span>}
+                                {attr.label}: <span className="text-primary font-semibold ml-1">{attr.value}</span>
+                              </div>
+                            ))}
+                          </div>
                         </div>
                       </div>
-                      <CardDescription className="line-clamp-3 text-sm min-h-[4.5rem]">{item.description}</CardDescription>
-                    </CardHeader>
-                    <CardFooter className="mt-auto pt-0">
-                      <Button variant="outline" className="w-full group-hover:bg-primary group-hover:text-primary-foreground transition-colors" onClick={() => openItemModal(item)}>
-                        <Edit className="mr-2 h-4 w-4" /> Edit Details
-                      </Button>
-                    </CardFooter>
+                      <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <Button variant="ghost" size="icon" onClick={() => { setEditingItem(item); setItemModalOpen(true); }}>
+                          <Edit className="h-4 w-4 text-zinc-400" />
+                        </Button>
+                        <Button variant="ghost" size="icon" className="text-destructive/60 hover:text-destructive" onClick={() => deleteDoc(doc(db, `services_tabs/${activeTab}/items`, item.id))}>
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </CardContent>
                   </Card>
-                ))}
-                
-                {items.length === 0 && (
-                  <div className="col-span-full py-20 text-center bg-muted/20 rounded-2xl border-2 border-dashed flex flex-col items-center justify-center gap-4">
-                    <div className="p-4 bg-muted rounded-full">
-                      <LayoutGrid className="h-8 w-8 text-muted-foreground opacity-30" />
-                    </div>
-                    <div className="space-y-1">
-                      <p className="text-muted-foreground font-medium">No services found in this category.</p>
-                      <p className="text-xs text-muted-foreground">Start by adding your first service item.</p>
-                    </div>
-                    <Button variant="secondary" onClick={() => openItemModal()}>Add First Service</Button>
-                  </div>
-                )}
-              </div>
-            </TabsContent>
-          ))}
-        </Tabs>
-      </Card>
+                );
+              })}
+              
+              <Button 
+                variant="outline" 
+                className="w-full h-24 border-dashed border-zinc-800 text-zinc-500 hover:text-zinc-300"
+                onClick={() => { setEditingItem({ title: '', iconName: 'User', attributes: [] }); setItemModalOpen(true); }}
+              >
+                <Plus className="mr-2 h-5 w-5" /> Add New Service to {tab.name}
+              </Button>
+            </div>
+          </TabsContent>
+        ))}
+      </Tabs>
 
       {/* Tab Modal */}
       <Dialog open={tabModalOpen} onOpenChange={setTabModalOpen}>
-        <DialogContent className="sm:max-w-[425px]">
+        <DialogContent className="bg-zinc-900 border-zinc-800 text-white">
           <DialogHeader>
-            <DialogTitle>{editingTab?.id ? 'Edit Category' : 'New Category'}</DialogTitle>
-            <DialogDescription>Configure how this category appears in the main navigation.</DialogDescription>
+            <DialogTitle>Category Details</DialogTitle>
           </DialogHeader>
-          <div className="grid gap-4 py-4">
-            <div className="grid gap-2">
-              <Label htmlFor="tab-name">Name</Label>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label>Category Name</Label>
               <Input 
-                id="tab-name" 
+                className="bg-zinc-800 border-zinc-700"
                 value={editingTab?.name || ''} 
-                onChange={(e) => setEditingTab(prev => ({ ...prev!, name: e.target.value }))}
-                placeholder="e.g. Mortgages, Savings..."
+                onChange={e => setEditingTab(p => ({...p!, name: e.target.value}))}
               />
             </div>
-            <div className="grid gap-2">
-              <Label htmlFor="tab-icon">Icon</Label>
-              <Select 
-                value={editingTab?.icon || 'LayoutGrid'} 
-                onValueChange={(val) => setEditingTab(prev => ({ ...prev!, icon: val }))}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select an icon" />
+            <div className="space-y-2">
+              <Label>Icon</Label>
+              <Select value={editingTab?.icon} onValueChange={v => setEditingTab(p => ({...p!, icon: v}))}>
+                <SelectTrigger className="bg-zinc-800 border-zinc-700">
+                  <SelectValue />
                 </SelectTrigger>
-                <SelectContent>
-                  {ICON_OPTIONS.map(opt => (
-                    <SelectItem key={opt.name} value={opt.name}>
+                <SelectContent className="bg-zinc-900 border-zinc-800">
+                  {CATEGORY_ICONS.map(i => (
+                    <SelectItem key={i.name} value={i.name}>
                       <div className="flex items-center gap-2">
-                        <opt.icon className="h-4 w-4" />
-                        <span>{opt.name}</span>
+                        <i.icon className="h-4 w-4" /> {i.name}
                       </div>
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
             </div>
-            <div className="flex items-center justify-between p-3 border rounded-lg bg-muted/30">
-              <div className="space-y-0.5">
-                <Label>Visibility</Label>
-                <p className="text-[10px] text-muted-foreground">Toggle visibility on the website</p>
-              </div>
-              <Switch 
-                checked={editingTab?.visible || false} 
-                onCheckedChange={(val) => setEditingTab(prev => ({ ...prev!, visible: val }))} 
-              />
-            </div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setTabModalOpen(false)}>Cancel</Button>
-            <Button onClick={saveTab} disabled={loading || !editingTab?.name}>
-              {loading ? 'Saving...' : 'Save Category'}
-            </Button>
+            <Button onClick={handleSaveTab} disabled={loading}>{loading ? 'Saving...' : 'Save'}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
       {/* Item Modal */}
       <Dialog open={itemModalOpen} onOpenChange={setItemModalOpen}>
-        <DialogContent className="sm:max-w-[600px]">
+        <DialogContent className="bg-zinc-900 border-zinc-800 text-white max-w-2xl">
           <DialogHeader>
-            <DialogTitle>{editingItem?.id ? 'Edit Service' : 'Add New Service'}</DialogTitle>
-            <DialogDescription>Fill in the details for this specific service offering.</DialogDescription>
+            <DialogTitle>Service Item Details</DialogTitle>
           </DialogHeader>
-          <div className="grid gap-6 py-4">
-            <div className="grid gap-2">
-              <Label htmlFor="item-title">Service Title</Label>
-              <Input 
-                id="item-title" 
-                value={editingItem?.title || ''} 
-                onChange={(e) => setEditingItem(prev => ({ ...prev!, title: e.target.value }))}
-                placeholder="e.g. First-Time Buyer Loan"
-              />
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="item-desc">Description</Label>
-              <Textarea 
-                id="item-desc" 
-                className="min-h-[120px]"
-                value={editingItem?.description || ''} 
-                onChange={(e) => setEditingItem(prev => ({ ...prev!, description: e.target.value }))}
-                placeholder="Describe the service, its benefits, and key features..."
-              />
-            </div>
+          <div className="space-y-6 py-4">
             <div className="grid grid-cols-2 gap-4">
-               <div className="grid gap-2">
-                <Label htmlFor="item-cta">Button Text</Label>
+              <div className="space-y-2">
+                <Label>Service Title</Label>
                 <Input 
-                  id="item-cta" 
-                  value={editingItem?.ctaText || 'Learn More'} 
-                  onChange={(e) => setEditingItem(prev => ({ ...prev!, ctaText: e.target.value }))}
+                  className="bg-zinc-800 border-zinc-700"
+                  value={editingItem?.title || ''} 
+                  onChange={e => setEditingItem(p => ({...p!, title: e.target.value}))}
                 />
               </div>
-               <div className="grid gap-2">
-                <Label htmlFor="item-order">Display Order</Label>
-                <Input 
-                  id="item-order" 
-                  type="number"
-                  value={editingItem?.order ?? 0} 
-                  onChange={(e) => setEditingItem(prev => ({ ...prev!, order: parseInt(e.target.value) }))}
-                />
+              <div className="space-y-2">
+                <Label>Service Icon</Label>
+                <Select value={editingItem?.iconName} onValueChange={v => setEditingItem(p => ({...p!, iconName: v}))}>
+                  <SelectTrigger className="bg-zinc-800 border-zinc-700">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent className="bg-zinc-900 border-zinc-800">
+                    {ITEM_ICONS.map(i => (
+                      <SelectItem key={i.name} value={i.name}>
+                        <div className="flex items-center gap-2">
+                          <i.icon className="h-4 w-4" /> {i.name}
+                        </div>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
             </div>
-            <div className="flex items-center justify-between p-4 border rounded-xl bg-muted/30">
-              <div className="space-y-0.5">
-                <Label>Service Visibility</Label>
-                <p className="text-xs text-muted-foreground">Make this service visible to the public</p>
+
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <Label className="text-zinc-400">Custom Attributes (Interest, Tenure, etc.)</Label>
+                <Button variant="ghost" size="sm" onClick={addAttribute} className="h-8 text-primary">
+                  <Plus className="mr-1 h-3 w-3" /> Add Row
+                </Button>
               </div>
-              <Switch 
-                checked={editingItem?.visible || false} 
-                onCheckedChange={(val) => setEditingItem(prev => ({ ...prev!, visible: val }))} 
-              />
+              <div className="space-y-2">
+                {editingItem?.attributes?.map((attr, idx) => (
+                  <div key={idx} className="flex gap-2 items-center group/row">
+                    <Input 
+                      placeholder="Label (e.g. Interest)"
+                      className="bg-zinc-800 border-zinc-700 flex-1"
+                      value={attr.label}
+                      onChange={e => updateAttribute(idx, 'label', e.target.value)}
+                    />
+                    <Input 
+                      placeholder="Value (e.g. 10.5%)"
+                      className="bg-zinc-800 border-zinc-700 flex-1"
+                      value={attr.value}
+                      onChange={e => updateAttribute(idx, 'value', e.target.value)}
+                    />
+                    <Button variant="ghost" size="icon" onClick={() => removeAttribute(idx)} className="text-destructive opacity-0 group-hover/row:opacity-100">
+                      <X className="h-4 w-4" />
+                    </Button>
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setItemModalOpen(false)}>Cancel</Button>
-            <Button onClick={saveItem} disabled={loading || !editingItem?.title}>
-              {loading ? 'Saving...' : 'Save Service'}
-            </Button>
+            <Button onClick={handleSaveItem} disabled={loading}>{loading ? 'Saving...' : 'Save Service'}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

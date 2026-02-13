@@ -6,10 +6,16 @@ import { SidebarProvider, SidebarInset, SidebarTrigger } from '@/components/ui/s
 import { AdminSidebar } from '@/components/admin/AdminSidebar';
 import { Separator } from '@/components/ui/separator';
 import { usePathname } from 'next/navigation';
+import { useState, useEffect } from 'react';
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  const pageName = pathname.split('/').pop() || 'Dashboard';
+  const [pageName, setPageName] = useState('Dashboard');
+
+  useEffect(() => {
+    const name = pathname.split('/').pop() || 'Dashboard';
+    setPageName(name === 'admin' ? 'Dashboard' : name);
+  }, [pathname]);
 
   return (
     <AuthProvider>
@@ -24,7 +30,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                 <nav className="flex items-center space-x-2 text-sm text-muted-foreground">
                   <span className="font-medium text-foreground">Admin</span>
                   <span>/</span>
-                  <span className="capitalize">{pageName === 'admin' ? 'Dashboard' : pageName}</span>
+                  <span className="capitalize">{pageName}</span>
                 </nav>
               </div>
             </header>

@@ -12,7 +12,6 @@ import {
   Inbox, 
   Send, 
   AlertCircle, 
-  RotateCcw,
   Archive,
   MoreVertical,
   Reply,
@@ -20,14 +19,12 @@ import {
   Sparkles,
   Plus,
   ArrowRight,
-  Eye as EyeIcon,
   FileText,
   Paperclip,
-  CheckCircle
+  Check
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Card, CardContent } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
@@ -59,10 +56,22 @@ interface Email {
 const DUMMY_EMAILS: Email[] = [
   {
     id: 'dummy-1',
-    from: 'customer.support@bankpartner.com',
+    from: 'firebase-noreply',
     to: 'admin@deal4bank.com',
-    subject: 'New Loan Partnership Inquiry',
-    body: "Hello Team,\n\nWe are interested in listing our new **Home Loan** products on your platform. We offer competitive rates starting from **8.5%**. \n\nPlease let us know the onboarding process.\n\nBest,\nPartnership Team",
+    subject: '[Firebase] Your project "deal4bank" was upgraded to the pay-as-you-go Blaze pricing plan',
+    body: "Hello Team,\n\nYour Firebase project has been successfully upgraded. You can now enjoy the full benefits of our Blaze plan including higher usage limits and additional features.\n\nBest,\nFirebase Team",
+    status: 'inbox',
+    read: false,
+    starred: false,
+    createdAt: { seconds: Date.now() / 1000 - 600 },
+    isDummy: true
+  },
+  {
+    id: 'dummy-2',
+    from: 'Google Cloud Platform',
+    to: 'admin@deal4bank.com',
+    subject: 'Your Project: deal4bank is at risk of suspension',
+    body: "Action required: Please review your billing account 01DB91-2A940E-904299 as it is past due or has invalid payment information. Go to my console to resolve this immediately.",
     status: 'inbox',
     read: false,
     starred: true,
@@ -70,39 +79,27 @@ const DUMMY_EMAILS: Email[] = [
     isDummy: true
   },
   {
-    id: 'dummy-2',
-    from: 'marketing@fintech-solutions.io',
+    id: 'dummy-3',
+    from: 'Zeabur',
     to: 'admin@deal4bank.com',
-    subject: 'Monthly Newsletter: Financial Trends 2024',
-    body: "# Financial Trends 2024\n\nStay ahead of the curve with our latest insights into the Indian lending market.\n\n*   Digital signatures are becoming mandatory.\n*   AI-driven credit scoring is on the rise.\n*   Personal loans are seeing a 20% YoY growth.\n\n[Read more on our blog](https://example.com)",
+    subject: 'Build with Zeabur #1',
+    body: "Dear Builder, Past week has marked one of the most exhilarating periods for us at Zeabur. We've launched our new dashboard and improved the deployment speeds by 40%. Check it out!",
     status: 'inbox',
     read: true,
-    starred: false,
-    createdAt: { seconds: Date.now() / 1000 - 86400 },
-    isDummy: true
-  },
-  {
-    id: 'dummy-3',
-    from: 'admin@deal4bank.com',
-    to: 'rajesh.k@example.com',
-    subject: 'Re: Home Loan Inquiry Update',
-    body: "Dear Rajesh,\n\nYour application for the **SBI Home Loan** is currently under review. We expect an update within 2 working days.\n\nRegards,\nDeal4Bank Admin",
-    status: 'sent',
-    read: true,
-    starred: false,
-    createdAt: { seconds: Date.now() / 1000 - 172800 },
+    starred: true,
+    createdAt: { seconds: Date.now() / 1000 - 7200 },
     isDummy: true
   },
   {
     id: 'dummy-4',
-    from: 'suspicious@phish-me.com',
+    from: 'Hostinger',
     to: 'admin@deal4bank.com',
-    subject: 'Urgent: Account Verification Required',
-    body: "Please click the link below to verify your admin account or it will be suspended.\n\n[Verify Now](https://malicious-link.com)",
-    status: 'spam',
-    read: false,
+    subject: 'Your authentication code',
+    body: "Please use the code 882910 to verify your identity. If you didn't request this, please secure your account immediately.",
+    status: 'inbox',
+    read: true,
     starred: false,
-    createdAt: { seconds: Date.now() / 1000 - 43200 },
+    createdAt: { seconds: Date.now() / 1000 - 86400 },
     isDummy: true
   }
 ];
@@ -113,17 +110,14 @@ export default function EmailPage() {
   const [activeTab, setActiveTab] = useState<'inbox' | 'sent' | 'trash' | 'spam'>('inbox');
   const [search, setSearch] = useState('');
   
-  // AI States
   const [summarizing, setSummarizing] = useState(false);
   const [summary, setSummary] = useState<string | null>(null);
   const [refining, setRefining] = useState(false);
   
-  // Dialog States
   const [replyOpen, setReplyOpen] = useState(false);
   const [composeOpen, setComposeOpen] = useState(false);
   const [sendingEmail, setSendingEmail] = useState(false);
   
-  // Form States
   const [replyBody, setReplyBody] = useState('');
   const [composeData, setComposeData] = useState({ to: '', subject: '', body: '' });
 
@@ -143,7 +137,6 @@ export default function EmailPage() {
         setEmails(emailList);
       }
     }, (error) => {
-      console.error("Firestore error:", error);
       setEmails(DUMMY_EMAILS);
     });
     return () => unsubscribe();
@@ -253,240 +246,197 @@ export default function EmailPage() {
 
   return (
     <div className="h-[calc(100vh-140px)] flex flex-col space-y-4">
-      {/* Page Header */}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-headline font-bold">Communications</h1>
-          <p className="text-muted-foreground text-sm">Manage your inbox and outgoing messages.</p>
+          <p className="text-muted-foreground text-sm">Manage your inbox and communications efficiently.</p>
         </div>
-        <div className="flex items-center gap-3">
-          <Dialog open={composeOpen} onOpenChange={setComposeOpen}>
-            <DialogTrigger asChild>
-              <Button className="shadow-lg"><Plus className="mr-2 h-4 w-4" /> New Email</Button>
-            </DialogTrigger>
-            <DialogContent className="max-w-4xl">
-              <DialogHeader>
-                <DialogTitle>Compose Advanced Message</DialogTitle>
-              </DialogHeader>
-              <div className="space-y-4 py-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label>To</Label>
-                    <Input 
-                      placeholder="recipient@example.com" 
-                      value={composeData.to}
-                      onChange={e => setComposeData(prev => ({ ...prev, to: e.target.value }))}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Subject</Label>
-                    <Input 
-                      placeholder="Enter subject..." 
-                      value={composeData.subject}
-                      onChange={e => setComposeData(prev => ({ ...prev, subject: e.target.value }))}
-                    />
-                  </div>
+        <Dialog open={composeOpen} onOpenChange={setComposeOpen}>
+          <DialogTrigger asChild>
+            <Button className="shadow-md rounded-full px-6"><Plus className="mr-2 h-4 w-4" /> Compose</Button>
+          </DialogTrigger>
+          <DialogContent className="max-w-4xl">
+            <DialogHeader><DialogTitle>New Message</DialogTitle></DialogHeader>
+            <div className="space-y-4 py-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>To</Label>
+                  <Input placeholder="recipient@example.com" value={composeData.to} onChange={e => setComposeData(prev => ({ ...prev, to: e.target.value }))} />
                 </div>
-
-                <Tabs defaultValue="edit" className="w-full">
-                  <TabsList className="grid w-full grid-cols-2 mb-2">
-                    <TabsTrigger value="edit">Write (Markdown)</TabsTrigger>
-                    <TabsTrigger value="preview">Preview</TabsTrigger>
-                  </TabsList>
-                  <TabsContent value="edit" className="space-y-2">
-                    <Textarea 
-                      placeholder="Write your message here using Markdown..." 
-                      className="min-h-[300px] font-mono text-sm"
-                      value={composeData.body}
-                      onChange={e => setComposeData(prev => ({ ...prev, body: e.target.value }))}
-                    />
-                  </TabsContent>
-                  <TabsContent value="preview" className="min-h-[300px] p-4 border rounded-md bg-muted/20 prose prose-sm dark:prose-invert max-w-none">
-                    <ReactMarkdown>{composeData.body || "*No content to preview*"}</ReactMarkdown>
-                  </TabsContent>
-                </Tabs>
-
-                <div className="flex justify-between items-center">
-                  <Button 
-                    variant="outline" 
-                    size="sm" 
-                    onClick={() => handleRefineTone(composeData.body, (val) => setComposeData(p => ({...p, body: val})))}
-                    disabled={refining || !composeData.body}
-                  >
-                    <Sparkles className="mr-2 h-3 w-3" /> {refining ? 'Refining...' : 'Optimize with AI'}
-                  </Button>
+                <div className="space-y-2">
+                  <Label>Subject</Label>
+                  <Input placeholder="Subject" value={composeData.subject} onChange={e => setComposeData(prev => ({ ...prev, subject: e.target.value }))} />
                 </div>
               </div>
-              <DialogFooter>
-                <Button variant="outline" onClick={() => setComposeOpen(false)}>Discard</Button>
-                <Button 
-                  onClick={() => handleSend(composeData.to, composeData.subject, composeData.body)} 
-                  disabled={sendingEmail || !composeData.to || !composeData.body}
-                >
-                  {sendingEmail ? 'Sending...' : 'Send Email'}
-                </Button>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
-        </div>
+              <Tabs defaultValue="edit">
+                <TabsList className="grid grid-cols-2 mb-2">
+                  <TabsTrigger value="edit">Write</TabsTrigger>
+                  <TabsTrigger value="preview">Preview</TabsTrigger>
+                </TabsList>
+                <TabsContent value="edit">
+                  <Textarea className="min-h-[300px] font-mono" value={composeData.body} onChange={e => setComposeData(prev => ({ ...prev, body: e.target.value }))} />
+                </TabsContent>
+                <TabsContent value="preview" className="min-h-[300px] p-4 border rounded-md bg-muted/20 prose prose-sm dark:prose-invert max-w-none">
+                  <ReactMarkdown>{composeData.body || "*No content to preview*"}</ReactMarkdown>
+                </TabsContent>
+              </Tabs>
+              <Button variant="outline" size="sm" onClick={() => handleRefineTone(composeData.body, (v) => setComposeData(p => ({...p, body: v})))} disabled={refining || !composeData.body}>
+                <Sparkles className="mr-2 h-3 w-3" /> {refining ? 'Refining...' : 'Refine with AI'}
+              </Button>
+            </div>
+            <DialogFooter>
+              <Button onClick={() => handleSend(composeData.to, composeData.subject, composeData.body)} disabled={sendingEmail || !composeData.to}>
+                {sendingEmail ? 'Sending...' : 'Send'}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
 
-      {/* Main Navigation Tabs */}
       <Tabs value={activeTab} onValueChange={(val: any) => setActiveTab(val)} className="w-full flex-1 flex flex-col">
-        <TabsList className="grid grid-cols-4 w-full max-w-2xl bg-muted/50 p-1 mb-4 h-12">
-          <TabsTrigger value="inbox" className="gap-2 h-10 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground transition-all">
+        <TabsList className="flex w-full justify-start bg-transparent border-b rounded-none px-0 mb-4 h-12 gap-6">
+          <TabsTrigger value="inbox" className="bg-transparent border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent rounded-none px-2 h-full gap-2 transition-all">
             <Inbox className="h-4 w-4" /> Inbox
           </TabsTrigger>
-          <TabsTrigger value="sent" className="gap-2 h-10 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground transition-all">
+          <TabsTrigger value="sent" className="bg-transparent border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent rounded-none px-2 h-full gap-2 transition-all">
             <Send className="h-4 w-4" /> Sent
           </TabsTrigger>
-          <TabsTrigger value="spam" className="gap-2 h-10 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground transition-all">
+          <TabsTrigger value="spam" className="bg-transparent border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent rounded-none px-2 h-full gap-2 transition-all">
             <AlertCircle className="h-4 w-4" /> Spam
           </TabsTrigger>
-          <TabsTrigger value="trash" className="gap-2 h-10 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground transition-all">
+          <TabsTrigger value="trash" className="bg-transparent border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent rounded-none px-2 h-full gap-2 transition-all">
             <Trash2 className="h-4 w-4" /> Trash
           </TabsTrigger>
         </TabsList>
 
-        <div className="flex flex-1 overflow-hidden bg-card rounded-xl border shadow-sm">
-          {/* Email Sidebar (List) */}
-          <div className="w-[400px] border-r flex flex-col min-w-[300px]">
-            <div className="p-4 border-b bg-muted/10">
+        <div className="flex flex-1 overflow-hidden bg-card border rounded-xl shadow-sm">
+          {/* Email List Sidebar */}
+          <div className="w-[450px] border-r flex flex-col">
+            <div className="p-2 border-b">
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input 
-                  placeholder="Search messages..." 
-                  className="pl-9 bg-background border-muted" 
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                />
+                <Input placeholder="Search mail" className="pl-9 h-9 border-none bg-muted/40" value={search} onChange={(e) => setSearch(e.target.value)} />
               </div>
             </div>
-
             <ScrollArea className="flex-1">
               {filteredEmails.map((email) => (
                 <div 
                   key={email.id}
-                  onClick={() => {
-                    setSelectedEmail(email);
-                    markRead(email);
-                    setSummary(null);
-                  }}
+                  onClick={() => { setSelectedEmail(email); markRead(email); setSummary(null); }}
                   className={cn(
-                    "p-4 border-b cursor-pointer transition-all flex items-start gap-3 hover:bg-muted/30 border-l-2 border-l-transparent",
-                    selectedEmail?.id === email.id ? "bg-primary/5 border-l-primary" : "",
-                    !email.read ? "bg-muted/20 border-l-primary font-semibold" : "opacity-80"
+                    "group flex items-center gap-3 px-4 py-3 border-b cursor-pointer hover:shadow-inner transition-colors border-l-4",
+                    selectedEmail?.id === email.id ? "bg-primary/10 border-l-primary" : "border-l-transparent",
+                    !email.read ? "bg-muted/30" : "opacity-80"
                   )}
                 >
-                  <div 
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      toggleStar(email);
-                    }}
-                    className="mt-1"
-                  >
-                    <Star className={cn("h-4 w-4", email.starred ? "fill-yellow-400 text-yellow-400" : "text-muted-foreground opacity-40")} />
+                  <div className="flex items-center gap-2">
+                    <div onClick={(e) => { e.stopPropagation(); toggleStar(email); }} className="hover:scale-110 transition-transform">
+                      <Star className={cn("h-4 w-4", email.starred ? "fill-yellow-400 text-yellow-400" : "text-muted-foreground opacity-30")} />
+                    </div>
                   </div>
                   <div className="flex-1 min-w-0">
-                    <div className="flex justify-between items-center mb-1">
-                      <span className="text-xs truncate font-medium text-foreground">{email.from}</span>
-                      <span className="text-[10px] text-muted-foreground">
-                        {email.createdAt?.seconds ? format(new Date(email.createdAt.seconds * 1000), 'MMM d') : 'Recent'}
+                    <div className="flex justify-between items-baseline gap-2 mb-0.5">
+                      <span className={cn("text-sm truncate", !email.read ? "font-bold text-foreground" : "font-medium text-muted-foreground")}>
+                        {email.from}
+                      </span>
+                      <span className="text-[10px] whitespace-nowrap text-muted-foreground">
+                        {email.createdAt?.seconds ? format(new Date(email.createdAt.seconds * 1000), 'MMM d') : 'Now'}
                       </span>
                     </div>
-                    <h4 className="text-sm font-semibold truncate mb-1">{email.subject}</h4>
-                    <p className="text-xs text-muted-foreground truncate leading-relaxed">{email.body}</p>
+                    <div className="flex items-center gap-2 truncate">
+                      <span className={cn("text-sm truncate", !email.read ? "font-bold" : "font-normal")}>
+                        {email.subject}
+                      </span>
+                      <span className="text-sm text-muted-foreground truncate opacity-60">
+                        - {email.body.replace(/\n/g, ' ')}
+                      </span>
+                    </div>
                   </div>
                 </div>
               ))}
               {filteredEmails.length === 0 && (
-                <div className="flex flex-col items-center justify-center h-full p-12 text-center text-muted-foreground opacity-30">
-                  <Mail className="h-12 w-12 mb-4" />
-                  <p className="text-sm">No messages in {activeTab}</p>
+                <div className="p-12 text-center text-muted-foreground opacity-30">
+                  <Mail className="h-12 w-12 mx-auto mb-4" />
+                  <p>No messages found</p>
                 </div>
               )}
             </ScrollArea>
           </div>
 
-          {/* Email Preview Panel (Right Side) */}
+          {/* Email Content Panel */}
           <div className="flex-1 flex flex-col min-w-0">
             {selectedEmail ? (
               <div className="flex flex-col h-full animate-in fade-in slide-in-from-right duration-300">
-                <div className="p-4 border-b flex items-center justify-between bg-muted/5">
-                  <div className="flex gap-1">
-                    {activeTab === 'trash' ? (
-                      <Button variant="ghost" size="icon" onClick={() => deletePermanently(selectedEmail)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
-                    ) : (
-                      <Button variant="ghost" size="icon" onClick={() => moveToTrash(selectedEmail)}><Trash2 className="h-4 w-4" /></Button>
-                    )}
-                    <Button variant="ghost" size="icon"><Archive className="h-4 w-4" /></Button>
-                    <Button variant="ghost" size="icon" onClick={() => setSelectedEmail(null)}><Minimize2 className="h-4 w-4" /></Button>
+                <div className="flex items-center justify-between p-3 border-b bg-muted/5">
+                  <div className="flex items-center gap-1">
+                    <Button variant="ghost" size="icon" onClick={() => moveToTrash(selectedEmail)} className="h-9 w-9">
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                    <Button variant="ghost" size="icon" className="h-9 w-9"><Archive className="h-4 w-4" /></Button>
+                    <Button variant="ghost" size="icon" onClick={() => setSelectedEmail(null)} className="h-9 w-9">
+                      <Minimize2 className="h-4 w-4" />
+                    </Button>
                   </div>
-                  <Badge variant="outline" className="text-[10px] uppercase font-bold tracking-tight px-3">{selectedEmail.status}</Badge>
+                  <div className="flex items-center gap-2">
+                    <Badge variant="outline" className="text-[10px] font-bold uppercase">{selectedEmail.status}</Badge>
+                    <Button variant="ghost" size="icon" className="h-9 w-9"><MoreVertical className="h-4 w-4" /></Button>
+                  </div>
                 </div>
                 
-                <ScrollArea className="flex-1 p-8">
-                  <div className="max-w-4xl mx-auto">
+                <ScrollArea className="flex-1">
+                  <div className="p-8 max-w-5xl mx-auto">
                     <div className="mb-8">
-                      <h2 className="text-3xl font-headline font-bold text-foreground mb-6 leading-tight">{selectedEmail.subject}</h2>
+                      <h2 className="text-2xl font-bold mb-6 text-foreground leading-tight">{selectedEmail.subject}</h2>
                       <div className="flex items-center gap-4">
-                        <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold shadow-sm text-lg border border-primary/20">
+                        <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold border">
                           {selectedEmail.from.charAt(0).toUpperCase()}
                         </div>
-                        <div className="min-w-0">
-                          <div className="text-sm font-bold truncate flex items-center gap-2">
-                            {selectedEmail.from}
-                            <Badge variant="secondary" className="text-[10px] font-normal py-0">Sender</Badge>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2">
+                            <span className="font-bold text-sm">{selectedEmail.from}</span>
+                            <span className="text-xs text-muted-foreground">&lt;{selectedEmail.from.includes('@') ? selectedEmail.from : 'system@deal4bank.com'}&gt;</span>
                           </div>
                           <div className="text-xs text-muted-foreground">to {selectedEmail.to}</div>
                         </div>
-                        <div className="ml-auto text-xs text-muted-foreground">
-                          {selectedEmail.createdAt?.seconds ? format(new Date(selectedEmail.createdAt.seconds * 1000), 'PPPP p') : ''}
+                        <div className="text-xs text-muted-foreground whitespace-nowrap">
+                          {selectedEmail.createdAt?.seconds ? format(new Date(selectedEmail.createdAt.seconds * 1000), 'MMM d, yyyy, h:mm a') : ''}
                         </div>
                       </div>
                     </div>
 
                     <div className="space-y-6">
-                      {selectedEmail.body.length > 300 && (
-                        <div className="p-5 bg-primary/5 rounded-2xl border border-primary/10 relative overflow-hidden group">
-                          <div className="flex items-center justify-between mb-3">
-                            <span className="text-xs font-bold uppercase tracking-widest text-primary flex items-center">
-                              <Sparkles className="h-3 w-3 mr-2" /> AI Assistant
+                      {selectedEmail.body.length > 250 && (
+                        <div className="p-4 bg-primary/5 rounded-xl border border-primary/10 relative">
+                          <div className="flex items-center justify-between mb-2">
+                            <span className="text-[10px] font-bold uppercase text-primary tracking-widest flex items-center">
+                              <Sparkles className="h-3 w-3 mr-1" /> AI Summary
                             </span>
                             {!summary && (
-                              <Button variant="link" size="sm" className="h-auto p-0 text-xs font-bold" onClick={handleSummarize} disabled={summarizing}>
-                                {summarizing ? 'Analyzing message...' : 'Summarize'}
+                              <Button variant="link" size="sm" className="h-auto p-0 text-[10px] font-bold" onClick={handleSummarize} disabled={summarizing}>
+                                {summarizing ? 'Analyzing...' : 'Generate Summary'}
                               </Button>
                             )}
                           </div>
-                          {summary ? (
-                            <div className="text-sm italic text-muted-foreground animate-in fade-in leading-relaxed border-l-2 border-primary/20 pl-4 py-1">
-                              "{summary}"
-                            </div>
-                          ) : (
-                            <p className="text-xs text-muted-foreground">This is a long message. Would you like an AI-generated summary?</p>
-                          )}
+                          {summary && <p className="text-sm italic text-muted-foreground border-l-2 border-primary/20 pl-4 py-1">"{summary}"</p>}
                         </div>
                       )}
 
-                      <div className="prose prose-sm dark:prose-invert max-w-none border-t pt-8 text-foreground/90 leading-relaxed text-base">
+                      <div className="prose prose-sm dark:prose-invert max-w-none pt-4 text-foreground/90 leading-relaxed text-base">
                         <ReactMarkdown>{selectedEmail.body}</ReactMarkdown>
                       </div>
 
                       {selectedEmail.attachments && selectedEmail.attachments.length > 0 && (
                         <div className="mt-12 border-t pt-6">
-                          <h5 className="text-xs font-bold text-muted-foreground mb-4 uppercase tracking-widest flex items-center">
-                            <Paperclip className="h-3 w-3 mr-2" /> Attachments ({selectedEmail.attachments.length})
-                          </h5>
-                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                          <p className="text-[10px] font-bold uppercase text-muted-foreground mb-4 tracking-widest flex items-center">
+                            <Paperclip className="h-3 w-3 mr-2" /> {selectedEmail.attachments.length} Attachments
+                          </p>
+                          <div className="flex flex-wrap gap-3">
                             {selectedEmail.attachments.map((file, i) => (
-                              <div key={i} className="flex items-center gap-3 p-3 rounded-xl border bg-muted/20 hover:bg-muted/40 transition-colors cursor-pointer group">
-                                <div className="h-10 w-10 bg-primary/10 rounded-lg flex items-center justify-center text-primary group-hover:bg-primary group-hover:text-primary-foreground transition-all">
-                                  <FileText className="h-5 w-5" />
-                                </div>
+                              <div key={i} className="flex items-center gap-3 p-3 rounded-lg border bg-muted/20 hover:bg-muted/40 transition-colors cursor-pointer group w-64">
+                                <div className="h-8 w-8 bg-primary/10 rounded flex items-center justify-center text-primary"><FileText className="h-4 w-4" /></div>
                                 <div className="min-w-0">
                                   <p className="text-xs font-bold truncate">{file.filename}</p>
-                                  <p className="text-[10px] text-muted-foreground uppercase tracking-tighter">{file.content_type || 'Unknown'}</p>
+                                  <p className="text-[9px] text-muted-foreground uppercase">{file.content_type}</p>
                                 </div>
                               </div>
                             ))}
@@ -497,68 +447,44 @@ export default function EmailPage() {
                   </div>
                 </ScrollArea>
 
-                <div className="p-6 border-t bg-muted/5 flex gap-3">
+                <div className="p-4 border-t bg-muted/5 flex items-center gap-3">
                   <Dialog open={replyOpen} onOpenChange={setReplyOpen}>
                     <DialogTrigger asChild>
-                      <Button className="flex-1 shadow-lg py-6"><Reply className="mr-2 h-4 w-4" /> Reply to Sender</Button>
+                      <Button className="flex-1 rounded-full py-6"><Reply className="mr-2 h-4 w-4" /> Reply</Button>
                     </DialogTrigger>
                     <DialogContent className="max-w-3xl">
-                      <DialogHeader>
-                        <DialogTitle>Reply to {selectedEmail.from}</DialogTitle>
-                      </DialogHeader>
+                      <DialogHeader><DialogTitle>Reply to {selectedEmail.from}</DialogTitle></DialogHeader>
                       <div className="space-y-4 py-4">
                         <Tabs defaultValue="edit">
-                          <TabsList className="grid w-full grid-cols-2 mb-2">
+                          <TabsList className="grid grid-cols-2 mb-2">
                             <TabsTrigger value="edit">Write</TabsTrigger>
                             <TabsTrigger value="preview">Preview</TabsTrigger>
                           </TabsList>
                           <TabsContent value="edit">
-                            <Textarea 
-                              placeholder="Write your response..." 
-                              className="min-h-[250px] font-mono text-sm leading-relaxed"
-                              value={replyBody}
-                              onChange={(e) => setReplyBody(e.target.value)}
-                              disabled={sendingEmail}
-                            />
+                            <Textarea className="min-h-[250px] font-mono" value={replyBody} onChange={(e) => setReplyBody(e.target.value)} />
                           </TabsContent>
-                          <TabsContent value="preview" className="min-h-[250px] p-4 border rounded-md prose prose-sm dark:prose-invert max-w-none overflow-y-auto bg-muted/5">
+                          <TabsContent value="preview" className="min-h-[250px] p-4 border rounded-md prose prose-sm dark:prose-invert max-w-none bg-muted/5">
                             <ReactMarkdown>{replyBody || "*No content to preview*"}</ReactMarkdown>
                           </TabsContent>
                         </Tabs>
-                        
-                        <div className="flex justify-between items-center">
-                          <Button 
-                            variant="outline" 
-                            size="sm" 
-                            onClick={() => handleRefineTone(replyBody, setReplyBody)} 
-                            disabled={refining || !replyBody || sendingEmail}
-                          >
-                            <Sparkles className="mr-2 h-3 w-3" /> {refining ? 'Refining...' : 'Refine Tone with AI'}
-                          </Button>
-                          <span className="text-[10px] text-muted-foreground italic">Markdown is supported</span>
-                        </div>
+                        <Button variant="outline" size="sm" onClick={() => handleRefineTone(replyBody, setReplyBody)} disabled={refining || !replyBody}>
+                          <Sparkles className="mr-2 h-3 w-3" /> {refining ? 'Refining...' : 'Refine Tone'}
+                        </Button>
                       </div>
                       <DialogFooter>
-                        <Button variant="outline" onClick={() => setReplyOpen(false)}>Cancel</Button>
-                        <Button 
-                          onClick={() => handleSend(selectedEmail.from, `Re: ${selectedEmail.subject}`, replyBody, true)} 
-                          disabled={sendingEmail || !replyBody}
-                        >
+                        <Button onClick={() => handleSend(selectedEmail.from, `Re: ${selectedEmail.subject}`, replyBody, true)} disabled={sendingEmail || !replyBody}>
                           {sendingEmail ? 'Sending...' : 'Send Reply'}
                         </Button>
                       </DialogFooter>
                     </DialogContent>
                   </Dialog>
-                  <Button variant="outline" className="flex-1 py-6">Forward <ArrowRight className="ml-2 h-3 w-3" /></Button>
+                  <Button variant="outline" className="flex-1 rounded-full py-6">Forward <ArrowRight className="ml-2 h-3 w-3" /></Button>
                 </div>
               </div>
             ) : (
-              <div className="flex-1 flex flex-col items-center justify-center p-12 text-center text-muted-foreground/30 animate-in fade-in duration-500">
-                <div className="p-8 bg-muted/20 rounded-full mb-6">
-                   <Mail className="h-20 w-20" />
-                </div>
-                <h3 className="text-xl font-headline font-bold text-muted-foreground/50">Select an email to read</h3>
-                <p className="max-w-xs mx-auto mt-2 text-sm">Choose a conversation from the list on the left to view details and reply.</p>
+              <div className="flex-1 flex flex-col items-center justify-center text-center p-12 opacity-30">
+                <div className="p-8 bg-muted rounded-full mb-6"><Mail className="h-20 w-20" /></div>
+                <h3 className="text-xl font-bold">Select an email to read</h3>
               </div>
             )}
           </div>

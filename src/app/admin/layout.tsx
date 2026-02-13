@@ -7,6 +7,7 @@ import { AdminSidebar } from '@/components/admin/AdminSidebar';
 import { Separator } from '@/components/ui/separator';
 import { usePathname } from 'next/navigation';
 import { useState, useEffect } from 'react';
+import { NotificationHandler } from '@/components/admin/NotificationHandler';
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -35,6 +36,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
               </div>
             </header>
             <main className="p-6 md:p-8">
+              <NotificationHandler />
               {children}
             </main>
           </SidebarInset>

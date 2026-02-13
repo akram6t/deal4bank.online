@@ -10,8 +10,8 @@ export const POST = async (request: NextRequest) => {
     if (event.type === 'email.received') {
       const emailData = event.data;
       
-      // Save to Firestore
-      await addDoc(collection(db, 'emails'), {
+      // 1. Save the Email to Firestore
+      const emailRef = await addDoc(collection(db, 'emails'), {
         email_id: emailData.email_id,
         from: emailData.from,
         to: emailData.to?.[0] || 'unknown@deal4bank.com',
@@ -24,11 +24,21 @@ export const POST = async (request: NextRequest) => {
         createdAt: serverTimestamp()
       });
 
-      // Note: Resend doesn't provide attachment content directly in webhook.
-      // Usually you'd fetch it via Resend API using email_id if needed.
-      // For now, we store the metadata.
+      // 2. Trigger a Notification event in Firestore for the Admin UI
+      await addDoc(collection(db, 'notifications'), {
+        type: 'NEW_EMAIL',
+        title: 'New Email Received',
+        message: `From: ${emailData.from}\nSubject: ${emailData.subject}`,
+        emailId: emailRef.id,
+        read: false,
+        createdAt: serverTimestamp()
+      });
 
-      return NextResponse.json({ success: true, message: 'Email recorded' });
+      // Note: Attachments in Resend webhooks are metadata. 
+      // In a production app, you would fetch the attachment binary using the Resend API
+      // and then upload to Firebase Storage: storageRef = ref(storage, `attachments/${id}`)
+
+      return NextResponse.json({ success: true, message: 'Email and notification recorded' });
     }
 
     return NextResponse.json({ success: true, message: 'Event ignored' });

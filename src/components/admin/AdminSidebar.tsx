@@ -11,7 +11,8 @@ import {
   Briefcase, 
   Mail, 
   Settings, 
-  LogOut
+  LogOut,
+  ExternalLink
 } from 'lucide-react';
 import { 
   Sidebar, 
@@ -30,7 +31,7 @@ const menuItems = [
   { icon: Building2, label: 'Company', href: '/admin/company' },
   { icon: ClipboardList, label: 'Inquiries', href: '/admin/inquiries' },
   { icon: Briefcase, label: 'Services', href: '/admin/services' },
-  { icon: Mail, label: 'Emails', href: '/admin/emails' },
+  { icon: Mail, label: 'Emails', href: 'https://mail.zoho.in', external: true },
   { icon: Settings, label: 'Settings', href: '/admin/settings' },
 ];
 
@@ -57,6 +58,8 @@ export function AdminSidebar() {
         <SidebarMenu>
           {menuItems.map((item) => {
             const isActive = pathname === item.href;
+            const isExternal = 'external' in item && item.external;
+
             return (
               <SidebarMenuItem key={item.href}>
                 <SidebarMenuButton 
@@ -68,10 +71,18 @@ export function AdminSidebar() {
                     isActive ? "bg-primary text-primary-foreground shadow-sm" : "hover:bg-muted"
                   )}
                 >
-                  <Link href={item.href}>
-                    <item.icon className={cn("h-5 w-5", isActive ? "text-primary-foreground" : "text-muted-foreground")} />
-                    <span>{item.label}</span>
-                  </Link>
+                  {isExternal ? (
+                    <a href={item.href} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2">
+                      <item.icon className={cn("h-5 w-5", isActive ? "text-primary-foreground" : "text-muted-foreground")} />
+                      <span>{item.label}</span>
+                      {state === "expanded" && <ExternalLink className="ml-auto h-3 w-3 opacity-50" />}
+                    </a>
+                  ) : (
+                    <Link href={item.href}>
+                      <item.icon className={cn("h-5 w-5", isActive ? "text-primary-foreground" : "text-muted-foreground")} />
+                      <span>{item.label}</span>
+                    </Link>
+                  )}
                 </SidebarMenuButton>
               </SidebarMenuItem>
             );

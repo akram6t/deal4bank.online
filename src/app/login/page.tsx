@@ -2,7 +2,7 @@
 "use client"
 
 import { useState } from 'react';
-import { signInWithEmailAndPassword } from 'firebase/auth';
+import { signInWithEmailAndPassword, sendPasswordResetEmail } from 'firebase/auth';
 import { auth } from '@/lib/firebase';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
@@ -10,12 +10,25 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
-import { LayoutDashboard, Lock } from 'lucide-react';
+import { LayoutDashboard, Lock, Mail } from 'lucide-react';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
+  const [forgotEmail, setForgotEmail] = useState('');
+  const [sendingReset, setSendingReset] = useState(false);
+  const [resetDialogOpen, setResetDialogOpen] = useState(false);
+  
   const router = useRouter();
   const { toast } = useToast();
 
@@ -34,6 +47,30 @@ export default function LoginPage() {
       });
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleForgotPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!forgotEmail) return;
+    
+    setSendingReset(true);
+    try {
+      await sendPasswordResetEmail(auth, forgotEmail);
+      toast({ 
+        title: "Reset Email Sent", 
+        description: "Please check your inbox for instructions to reset your password." 
+      });
+      setResetDialogOpen(false);
+      setForgotEmail('');
+    } catch (error: any) {
+      toast({ 
+        variant: "destructive", 
+        title: "Error", 
+        description: error.message || "Could not send reset email." 
+      });
+    } finally {
+      setSendingReset(false);
     }
   };
 
@@ -61,7 +98,43 @@ export default function LoginPage() {
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="password">Password</Label>
+              <div className="flex items-center justify-between">
+                <Label htmlFor="password">Password</Label>
+                <Dialog open={resetDialogOpen} onOpenChange={setResetDialogOpen}>
+                  <DialogTrigger asChild>
+                    <button type="button" className="text-xs text-primary hover:underline font-medium">
+                      Forgot password?
+                    </button>
+                  </DialogTrigger>
+                  <DialogContent className="sm:max-w-md">
+                    <DialogHeader>
+                      <DialogTitle>Reset Password</DialogTitle>
+                      <DialogDescription>
+                        Enter your email address and we'll send you a link to reset your password.
+                      </DialogDescription>
+                    </DialogHeader>
+                    <form onSubmit={handleForgotPassword} className="space-y-4 py-2">
+                      <div className="space-y-2">
+                        <Label htmlFor="reset-email">Email Address</Label>
+                        <Input 
+                          id="reset-email" 
+                          type="email" 
+                          placeholder="your@email.com" 
+                          value={forgotEmail}
+                          onChange={(e) => setForgotEmail(e.target.value)}
+                          required
+                        />
+                      </div>
+                      <DialogFooter className="sm:justify-start">
+                        <Button type="submit" disabled={sendingReset}>
+                          {sendingReset ? "Sending..." : "Send Reset Link"}
+                          <Mail className="ml-2 h-4 w-4" />
+                        </Button>
+                      </DialogFooter>
+                    </form>
+                  </DialogContent>
+                </Dialog>
+              </div>
               <Input 
                 id="password" 
                 type="password" 

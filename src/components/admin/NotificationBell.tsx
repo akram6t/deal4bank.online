@@ -2,9 +2,9 @@
 "use client"
 
 import { useState, useEffect } from 'react';
-import { collection, query, where, onSnapshot, orderBy, limit, doc, updateDoc, writeBatch } from 'firebase/firestore';
+import { collection, query, onSnapshot, orderBy, limit, doc, updateDoc, writeBatch } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
-import { Bell, Check, Mail, MessageSquare, AlertCircle } from 'lucide-react';
+import { Bell, Mail, MessageSquare, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   Popover,
@@ -12,7 +12,6 @@ import {
   PopoverTrigger,
 } from '@/components/ui/popover';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Badge } from '@/components/ui/badge';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 
@@ -32,6 +31,8 @@ export function NotificationBell() {
 
   useEffect(() => {
     setMounted(true);
+    
+    // Explicitly limit the Firestore query to the top 20 notifications
     const q = query(
       collection(db, 'notifications'),
       orderBy('createdAt', 'desc'),
@@ -45,22 +46,33 @@ export function NotificationBell() {
       })) as Notification[];
       
       setNotifications(list);
+      // Calculate unread count from the latest 20 items
       setUnreadCount(list.filter(n => !n.read).length);
+    }, (error) => {
+      console.warn("Firestore notification listener error:", error);
     });
 
     return () => unsubscribe();
   }, []);
 
   const markAsRead = async (id: string) => {
-    await updateDoc(doc(db, 'notifications', id), { read: true });
+    try {
+      await updateDoc(doc(db, 'notifications', id), { read: true });
+    } catch (err) {
+      console.warn("Failed to mark notification as read:", err);
+    }
   };
 
   const markAllAsRead = async () => {
-    const batch = writeBatch(db);
-    notifications.filter(n => !n.read).forEach(n => {
-      batch.update(doc(db, 'notifications', n.id), { read: true });
-    });
-    await batch.commit();
+    try {
+      const batch = writeBatch(db);
+      notifications.filter(n => !n.read).forEach(n => {
+        batch.update(doc(db, 'notifications', n.id), { read: true });
+      });
+      await batch.commit();
+    } catch (err) {
+      console.warn("Failed to mark all as read:", err);
+    }
   };
 
   const getIcon = (type: string) => {
@@ -148,7 +160,7 @@ export function NotificationBell() {
         </ScrollArea>
         <div className="p-2 border-t text-center">
           <Button variant="ghost" className="w-full h-8 text-xs font-medium text-muted-foreground">
-            View all activity
+            View recent activity
           </Button>
         </div>
       </PopoverContent>

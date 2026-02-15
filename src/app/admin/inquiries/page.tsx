@@ -23,7 +23,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
-import { format, isAfter, subDays, startOfDay, isBefore, isValid } from 'date-fns';
+import { format, isAfter, subDays, startOfDay, isBefore } from 'date-fns';
 import { 
   DropdownMenu, 
   DropdownMenuContent, 
@@ -95,9 +95,11 @@ export default function InquiriesPage() {
   const [inquiries, setInquiries] = useState<Inquiry[]>([]);
   const [loading, setLoading] = useState(true);
   const [dateFilter, setDateFilter] = useState<string>('all');
+  const [mounted, setMounted] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
+    setMounted(true);
     const q = query(collection(db, 'inquiries'), orderBy('createdAt', 'desc'));
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const list = snapshot.docs.map(doc => ({
@@ -207,7 +209,6 @@ export default function InquiriesPage() {
     const workbook = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(workbook, worksheet, "Inquiries");
     
-    // Generate filename based on date filter
     const filename = `Deal4Bank_Inquiries_${format(new Date(), 'yyyyMMdd_HHmm')}.xlsx`;
     XLSX.writeFile(workbook, filename);
     
@@ -235,21 +236,23 @@ export default function InquiriesPage() {
             <Download className="h-4 w-4 mr-2" /> Export to Excel
           </Button>
 
-          <div className="flex items-center gap-2 bg-muted/50 p-1 rounded-lg border">
-            <Filter className="h-4 w-4 ml-2 text-muted-foreground" />
-            <Select value={dateFilter} onValueChange={setDateFilter}>
-              <SelectTrigger className="w-[200px] border-none bg-transparent shadow-none focus:ring-0">
-                <SelectValue placeholder="Filter by date" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Inquiries</SelectItem>
-                <SelectItem value="today">Today's New</SelectItem>
-                <SelectItem value="yesterday">Yesterday's New</SelectItem>
-                <SelectItem value="last7days">Last 7 Days</SelectItem>
-                <SelectItem value="pending_followup">Overdue Follow-ups</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
+          {mounted && (
+            <div className="flex items-center gap-2 bg-muted/50 p-1 rounded-lg border">
+              <Filter className="h-4 w-4 ml-2 text-muted-foreground" />
+              <Select value={dateFilter} onValueChange={setDateFilter}>
+                <SelectTrigger className="w-[200px] border-none bg-transparent shadow-none focus:ring-0">
+                  <SelectValue placeholder="Filter by date" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Inquiries</SelectItem>
+                  <SelectItem value="today">Today's New</SelectItem>
+                  <SelectItem value="yesterday">Yesterday's New</SelectItem>
+                  <SelectItem value="last7days">Last 7 Days</SelectItem>
+                  <SelectItem value="pending_followup">Overdue Follow-ups</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          )}
 
           <Badge variant="outline" className="px-4 py-1.5 h-10 border-dashed">
             {filteredInquiries.length} Result{filteredInquiries.length !== 1 ? 's' : ''}
@@ -319,70 +322,73 @@ export default function InquiriesPage() {
                       </div>
 
                       <div className="flex flex-col sm:flex-row items-center gap-4 lg:shrink-0">
-                        {/* Follow-up Date Picker */}
                         <div className="flex flex-col items-center gap-1.5">
                           <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Follow-up</span>
-                          <Popover>
-                            <PopoverTrigger asChild>
-                              <Button 
-                                variant="outline" 
-                                size="sm" 
-                                className={cn(
-                                  "h-9 px-3 rounded-full text-xs font-medium gap-2",
-                                  !followUpDateObj && "text-muted-foreground border-dashed",
-                                  isOverdue && "border-destructive text-destructive bg-destructive/5"
+                          {mounted && (
+                            <Popover>
+                              <PopoverTrigger asChild>
+                                <Button 
+                                  variant="outline" 
+                                  size="sm" 
+                                  className={cn(
+                                    "h-9 px-3 rounded-full text-xs font-medium gap-2",
+                                    !followUpDateObj && "text-muted-foreground border-dashed",
+                                    isOverdue && "border-destructive text-destructive bg-destructive/5"
+                                  )}
+                                >
+                                  <CalendarIcon className="h-3.5 w-3.5" />
+                                  {followUpDateObj ? format(followUpDateObj, 'MMM d, yyyy') : 'Set Date'}
+                                </Button>
+                              </PopoverTrigger>
+                              <PopoverContent className="w-auto p-0" align="end">
+                                <Calendar
+                                  mode="single"
+                                  selected={followUpDateObj || undefined}
+                                  onSelect={(date) => updateFollowUpDate(item.id, date, item.isDummy)}
+                                  initialFocus
+                                />
+                                {followUpDateObj && (
+                                  <div className="p-2 border-t text-center">
+                                    <Button 
+                                      variant="ghost" 
+                                      size="sm" 
+                                      className="w-full text-destructive text-[10px] h-7"
+                                      onClick={() => updateFollowUpDate(item.id, undefined, item.isDummy)}
+                                    >
+                                      Clear Follow-up
+                                    </Button>
+                                  </div>
                                 )}
-                              >
-                                <CalendarIcon className="h-3.5 w-3.5" />
-                                {followUpDateObj ? format(followUpDateObj, 'MMM d, yyyy') : 'Set Date'}
-                              </Button>
-                            </PopoverTrigger>
-                            <PopoverContent className="w-auto p-0" align="end">
-                              <Calendar
-                                mode="single"
-                                selected={followUpDateObj || undefined}
-                                onSelect={(date) => updateFollowUpDate(item.id, date, item.isDummy)}
-                                initialFocus
-                              />
-                              {followUpDateObj && (
-                                <div className="p-2 border-t text-center">
-                                  <Button 
-                                    variant="ghost" 
-                                    size="sm" 
-                                    className="w-full text-destructive text-[10px] h-7"
-                                    onClick={() => updateFollowUpDate(item.id, undefined, item.isDummy)}
-                                  >
-                                    Clear Follow-up
-                                  </Button>
-                                </div>
-                              )}
-                            </PopoverContent>
-                          </Popover>
+                              </PopoverContent>
+                            </Popover>
+                          )}
                         </div>
 
                         <div className="flex items-center gap-2 h-fit lg:mt-5">
                           <Button variant="outline" size="sm" asChild className="rounded-full">
                             <a href={`mailto:${item.email}`}><Mail className="h-4 w-4 mr-2" /> Reply</a>
                           </Button>
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <Button variant="ghost" size="icon" className="rounded-full"><MoreVertical className="h-4 w-4" /></Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
-                              <DropdownMenuItem onClick={() => updateStatus(item.id, 'contacted', item.isDummy)}>
-                                <CheckCircle2 className="h-4 w-4 mr-2 text-blue-500" /> Mark Contacted
-                              </DropdownMenuItem>
-                              <DropdownMenuItem onClick={() => updateStatus(item.id, 'closed', item.isDummy)}>
-                                <CheckCircle2 className="h-4 w-4 mr-2 text-green-500" /> Mark Closed
-                              </DropdownMenuItem>
-                              <DropdownMenuItem onClick={() => updateStatus(item.id, 'pending', item.isDummy)}>
-                                <Clock className="h-4 w-4 mr-2 text-orange-500" /> Mark Pending
-                              </DropdownMenuItem>
-                              <DropdownMenuItem className="text-destructive" onClick={() => deleteInquiry(item.id, item.isDummy)}>
-                                <Trash2 className="h-4 w-4 mr-2" /> Delete Inquiry
-                              </DropdownMenuItem>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
+                          {mounted && (
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" size="icon" className="rounded-full"><MoreVertical className="h-4 w-4" /></Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end">
+                                <DropdownMenuItem onClick={() => updateStatus(item.id, 'contacted', item.isDummy)}>
+                                  <CheckCircle2 className="h-4 w-4 mr-2 text-blue-500" /> Mark Contacted
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => updateStatus(item.id, 'closed', item.isDummy)}>
+                                  <CheckCircle2 className="h-4 w-4 mr-2 text-green-500" /> Mark Closed
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => updateStatus(item.id, 'pending', item.isDummy)}>
+                                  <Clock className="h-4 w-4 mr-2 text-orange-500" /> Mark Pending
+                                </DropdownMenuItem>
+                                <DropdownMenuItem className="text-destructive" onClick={() => deleteInquiry(item.id, item.isDummy)}>
+                                  <Trash2 className="h-4 w-4 mr-2" /> Delete Inquiry
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          )}
                         </div>
                       </div>
                     </div>

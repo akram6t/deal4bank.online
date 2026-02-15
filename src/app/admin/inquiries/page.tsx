@@ -1,4 +1,3 @@
-
 "use client"
 
 import { useState, useEffect, useMemo } from 'react';
@@ -94,7 +93,7 @@ const DUMMY_INQUIRIES: Inquiry[] = [
 export default function InquiriesPage() {
   const [inquiries, setInquiries] = useState<Inquiry[]>([]);
   const [loading, setLoading] = useState(true);
-  const [dateFilter, setDateFilter] = useState<string>('all');
+  const [dateFilter, setDateFilter] = useState<string>('last7days');
   const [mounted, setMounted] = useState(false);
   const { toast } = useToast();
 

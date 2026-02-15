@@ -16,7 +16,11 @@ import {
   Filter,
   Download,
   Calendar as CalendarIcon,
-  AlertCircle
+  AlertCircle,
+  ChevronLeft,
+  ChevronRight,
+  ChevronsLeft,
+  ChevronsRight
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -90,10 +94,13 @@ const DUMMY_INQUIRIES: Inquiry[] = [
   }
 ];
 
+const ITEMS_PER_PAGE = 10;
+
 export default function InquiriesPage() {
   const [inquiries, setInquiries] = useState<Inquiry[]>([]);
   const [loading, setLoading] = useState(true);
   const [dateFilter, setDateFilter] = useState<string>('last7days');
+  const [currentPage, setCurrentPage] = useState(1);
   const [mounted, setMounted] = useState(false);
   const { toast } = useToast();
 
@@ -120,6 +127,11 @@ export default function InquiriesPage() {
     return () => unsubscribe();
   }, []);
 
+  // Reset to page 1 when filter changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [dateFilter]);
+
   const filteredInquiries = useMemo(() => {
     const now = new Date();
     return inquiries.filter(item => {
@@ -145,6 +157,13 @@ export default function InquiriesPage() {
       }
     });
   }, [inquiries, dateFilter]);
+
+  const totalPages = Math.ceil(filteredInquiries.length / ITEMS_PER_PAGE);
+  
+  const paginatedInquiries = useMemo(() => {
+    const start = (currentPage - 1) * ITEMS_PER_PAGE;
+    return filteredInquiries.slice(start, start + ITEMS_PER_PAGE);
+  }, [filteredInquiries, currentPage]);
 
   const updateStatus = async (id: string, status: Inquiry['status'], isDummy?: boolean) => {
     if (isDummy) {
@@ -271,131 +290,185 @@ export default function InquiriesPage() {
             <p className="text-muted-foreground text-sm max-w-xs mx-auto mt-1">Try adjusting your filters or wait for new applications.</p>
           </Card>
         ) : (
-          filteredInquiries.map((item) => {
-            const followUpDateObj = item.followUpDate?.seconds ? new Date(item.followUpDate.seconds * 1000) : null;
-            const isOverdue = followUpDateObj && isBefore(followUpDateObj, startOfDay(new Date())) && item.status !== 'closed';
+          <>
+            {paginatedInquiries.map((item) => {
+              const followUpDateObj = item.followUpDate?.seconds ? new Date(item.followUpDate.seconds * 1000) : null;
+              const isOverdue = followUpDateObj && isBefore(followUpDateObj, startOfDay(new Date())) && item.status !== 'closed';
 
-            return (
-              <Card key={item.id} className="hover:shadow-md transition-all group overflow-hidden border-border bg-card">
-                <CardContent className="p-0">
-                  <div className="flex flex-col md:flex-row">
-                    <div className={cn(
-                      "w-2 shrink-0",
-                      item.status === 'pending' ? "bg-orange-500" : 
-                      item.status === 'contacted' ? "bg-blue-500" : "bg-green-500"
-                    )} />
-                    <div className="flex-1 p-6 flex flex-col lg:flex-row lg:items-start justify-between gap-6">
-                      <div className="space-y-3 flex-1 min-w-0">
-                        <div className="flex items-center gap-3 flex-wrap">
-                          <h3 className="text-lg font-bold truncate text-foreground">{item.fullName}</h3>
-                          {getStatusBadge(item.status)}
-                          <span className="text-xs text-muted-foreground flex items-center">
-                            <Clock className="h-3 w-3 mr-1" />
-                            {item.createdAt?.seconds ? format(new Date(item.createdAt.seconds * 1000), 'MMM d, h:mm a') : 'Recent'}
-                          </span>
-                          {isOverdue && (
-                            <Badge variant="destructive" className="animate-pulse flex items-center gap-1 text-[10px]">
-                              <AlertCircle className="h-3 w-3" /> Overdue Follow-up
-                            </Badge>
-                          )}
+              return (
+                <Card key={item.id} className="hover:shadow-md transition-all group overflow-hidden border-border bg-card">
+                  <CardContent className="p-0">
+                    <div className="flex flex-col md:flex-row">
+                      <div className={cn(
+                        "w-2 shrink-0",
+                        item.status === 'pending' ? "bg-orange-500" : 
+                        item.status === 'contacted' ? "bg-blue-500" : "bg-green-500"
+                      )} />
+                      <div className="flex-1 p-6 flex flex-col lg:flex-row lg:items-start justify-between gap-6">
+                        <div className="space-y-3 flex-1 min-w-0">
+                          <div className="flex items-center gap-3 flex-wrap">
+                            <h3 className="text-lg font-bold truncate text-foreground">{item.fullName}</h3>
+                            {getStatusBadge(item.status)}
+                            <span className="text-xs text-muted-foreground flex items-center">
+                              <Clock className="h-3 w-3 mr-1" />
+                              {item.createdAt?.seconds ? format(new Date(item.createdAt.seconds * 1000), 'MMM d, h:mm a') : 'Recent'}
+                            </span>
+                            {isOverdue && (
+                              <Badge variant="destructive" className="animate-pulse flex items-center gap-1 text-[10px]">
+                                <AlertCircle className="h-3 w-3" /> Overdue Follow-up
+                              </Badge>
+                            )}
+                          </div>
+                          
+                          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-x-6 gap-y-2 text-sm text-muted-foreground">
+                            <div className="flex items-center gap-2">
+                              <Mail className="h-4 w-4 shrink-0 text-primary/60" />
+                              <span className="truncate">{item.email}</span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <Phone className="h-4 w-4 shrink-0 text-primary/60" />
+                              <span>+91 {item.phone}</span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <MapPin className="h-4 w-4 shrink-0 text-primary/60" />
+                              <span className="truncate">{item.city}, {item.state}</span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <Briefcase className="h-4 w-4 shrink-0 text-primary/60" />
+                              <span className="font-semibold text-foreground">{item.service}</span>
+                            </div>
+                          </div>
                         </div>
-                        
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-x-6 gap-y-2 text-sm text-muted-foreground">
-                          <div className="flex items-center gap-2">
-                            <Mail className="h-4 w-4 shrink-0 text-primary/60" />
-                            <span className="truncate">{item.email}</span>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <Phone className="h-4 w-4 shrink-0 text-primary/60" />
-                            <span>+91 {item.phone}</span>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <MapPin className="h-4 w-4 shrink-0 text-primary/60" />
-                            <span className="truncate">{item.city}, {item.state}</span>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <Briefcase className="h-4 w-4 shrink-0 text-primary/60" />
-                            <span className="font-semibold text-foreground">{item.service}</span>
-                          </div>
-                        </div>
-                      </div>
 
-                      <div className="flex flex-col sm:flex-row items-center gap-4 lg:shrink-0">
-                        <div className="flex flex-col items-center gap-1.5">
-                          <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Follow-up</span>
-                          {mounted && (
-                            <Popover>
-                              <PopoverTrigger asChild>
-                                <Button 
-                                  variant="outline" 
-                                  size="sm" 
-                                  className={cn(
-                                    "h-9 px-3 rounded-full text-xs font-medium gap-2",
-                                    !followUpDateObj && "text-muted-foreground border-dashed",
-                                    isOverdue && "border-destructive text-destructive bg-destructive/5"
+                        <div className="flex flex-col sm:flex-row items-center gap-4 lg:shrink-0">
+                          <div className="flex flex-col items-center gap-1.5">
+                            <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Follow-up</span>
+                            {mounted && (
+                              <Popover>
+                                <PopoverTrigger asChild>
+                                  <Button 
+                                    variant="outline" 
+                                    size="sm" 
+                                    className={cn(
+                                      "h-9 px-3 rounded-full text-xs font-medium gap-2",
+                                      !followUpDateObj && "text-muted-foreground border-dashed",
+                                      isOverdue && "border-destructive text-destructive bg-destructive/5"
+                                    )}
+                                  >
+                                    <CalendarIcon className="h-3.5 w-3.5" />
+                                    {followUpDateObj ? format(followUpDateObj, 'MMM d, yyyy') : 'Set Date'}
+                                  </Button>
+                                </PopoverTrigger>
+                                <PopoverContent className="w-auto p-0" align="end">
+                                  <Calendar
+                                    mode="single"
+                                    selected={followUpDateObj || undefined}
+                                    onSelect={(date) => updateFollowUpDate(item.id, date, item.isDummy)}
+                                    initialFocus
+                                  />
+                                  {followUpDateObj && (
+                                    <div className="p-2 border-t text-center">
+                                      <Button 
+                                        variant="ghost" 
+                                        size="sm" 
+                                        className="w-full text-destructive text-[10px] h-7"
+                                        onClick={() => updateFollowUpDate(item.id, undefined, item.isDummy)}
+                                      >
+                                        Clear Follow-up
+                                      </Button>
+                                    </div>
                                   )}
-                                >
-                                  <CalendarIcon className="h-3.5 w-3.5" />
-                                  {followUpDateObj ? format(followUpDateObj, 'MMM d, yyyy') : 'Set Date'}
-                                </Button>
-                              </PopoverTrigger>
-                              <PopoverContent className="w-auto p-0" align="end">
-                                <Calendar
-                                  mode="single"
-                                  selected={followUpDateObj || undefined}
-                                  onSelect={(date) => updateFollowUpDate(item.id, date, item.isDummy)}
-                                  initialFocus
-                                />
-                                {followUpDateObj && (
-                                  <div className="p-2 border-t text-center">
-                                    <Button 
-                                      variant="ghost" 
-                                      size="sm" 
-                                      className="w-full text-destructive text-[10px] h-7"
-                                      onClick={() => updateFollowUpDate(item.id, undefined, item.isDummy)}
-                                    >
-                                      Clear Follow-up
-                                    </Button>
-                                  </div>
-                                )}
-                              </PopoverContent>
-                            </Popover>
-                          )}
-                        </div>
+                                </PopoverContent>
+                              </Popover>
+                            )}
+                          </div>
 
-                        <div className="flex items-center gap-2 h-fit lg:mt-5">
-                          <Button variant="outline" size="sm" asChild className="rounded-full">
-                            <a href={`mailto:${item.email}`}><Mail className="h-4 w-4 mr-2" /> Reply</a>
-                          </Button>
-                          {mounted && (
-                            <DropdownMenu>
-                              <DropdownMenuTrigger asChild>
-                                <Button variant="ghost" size="icon" className="rounded-full"><MoreVertical className="h-4 w-4" /></Button>
-                              </DropdownMenuTrigger>
-                              <DropdownMenuContent align="end">
-                                <DropdownMenuItem onClick={() => updateStatus(item.id, 'contacted', item.isDummy)}>
-                                  <CheckCircle2 className="h-4 w-4 mr-2 text-blue-500" /> Mark Contacted
-                                </DropdownMenuItem>
-                                <DropdownMenuItem onClick={() => updateStatus(item.id, 'closed', item.isDummy)}>
-                                  <CheckCircle2 className="h-4 w-4 mr-2 text-green-500" /> Mark Closed
-                                </DropdownMenuItem>
-                                <DropdownMenuItem onClick={() => updateStatus(item.id, 'pending', item.isDummy)}>
-                                  <Clock className="h-4 w-4 mr-2 text-orange-500" /> Mark Pending
-                                </DropdownMenuItem>
-                                <DropdownMenuItem className="text-destructive" onClick={() => deleteInquiry(item.id, item.isDummy)}>
-                                  <Trash2 className="h-4 w-4 mr-2" /> Delete Inquiry
-                                </DropdownMenuItem>
-                              </DropdownMenuContent>
-                            </DropdownMenu>
-                          )}
+                          <div className="flex items-center gap-2 h-fit lg:mt-5">
+                            <Button variant="outline" size="sm" asChild className="rounded-full">
+                              <a href={`mailto:${item.email}`}><Mail className="h-4 w-4 mr-2" /> Reply</a>
+                            </Button>
+                            {mounted && (
+                              <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                  <Button variant="ghost" size="icon" className="rounded-full"><MoreVertical className="h-4 w-4" /></Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end">
+                                  <DropdownMenuItem onClick={() => updateStatus(item.id, 'contacted', item.isDummy)}>
+                                    <CheckCircle2 className="h-4 w-4 mr-2 text-blue-500" /> Mark Contacted
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem onClick={() => updateStatus(item.id, 'closed', item.isDummy)}>
+                                    <CheckCircle2 className="h-4 w-4 mr-2 text-green-500" /> Mark Closed
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem onClick={() => updateStatus(item.id, 'pending', item.isDummy)}>
+                                    <Clock className="h-4 w-4 mr-2 text-orange-500" /> Mark Pending
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem className="text-destructive" onClick={() => deleteInquiry(item.id, item.isDummy)}>
+                                    <Trash2 className="h-4 w-4 mr-2" /> Delete Inquiry
+                                  </DropdownMenuItem>
+                                </DropdownMenuContent>
+                              </DropdownMenu>
+                            )}
+                          </div>
                         </div>
                       </div>
                     </div>
+                  </CardContent>
+                </Card>
+              );
+            })}
+
+            {/* Pagination Controls */}
+            {totalPages > 1 && (
+              <div className="flex items-center justify-between px-2 py-4 border-t mt-4">
+                <div className="text-sm text-muted-foreground">
+                  Showing <span className="font-medium">{(currentPage - 1) * ITEMS_PER_PAGE + 1}</span> to <span className="font-medium">{Math.min(currentPage * ITEMS_PER_PAGE, filteredInquiries.length)}</span> of <span className="font-medium">{filteredInquiries.length}</span> results
+                </div>
+                <div className="flex items-center space-x-2">
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    className="h-8 w-8"
+                    onClick={() => setCurrentPage(1)}
+                    disabled={currentPage === 1}
+                  >
+                    <ChevronsLeft className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    className="h-8 w-8"
+                    onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                    disabled={currentPage === 1}
+                  >
+                    <ChevronLeft className="h-4 w-4" />
+                  </Button>
+                  
+                  <div className="flex items-center justify-center text-sm font-medium">
+                    Page {currentPage} of {totalPages}
                   </div>
-                </CardContent>
-              </Card>
-            );
-          })
+
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    className="h-8 w-8"
+                    onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                    disabled={currentPage === totalPages}
+                  >
+                    <ChevronRight className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    className="h-8 w-8"
+                    onClick={() => setCurrentPage(totalPages)}
+                    disabled={currentPage === totalPages}
+                  >
+                    <ChevronsRight className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+            )}
+          </>
         )}
       </div>
     </div>

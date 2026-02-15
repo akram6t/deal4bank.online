@@ -79,7 +79,7 @@ export function AdminSidebar() {
                     </a>
                   ) : (
                     <Link href={item.href}>
-                      <item.icon className={cn("h-5 w-5", isActive ? "text-primary-foreground" : "text-muted-foreground")} />
+                      <item.icon className={cn("h-5 w-5", isActive ? "text-muted-forground" : "text-muted-foreground")} />
                       <span>{item.label}</span>
                     </Link>
                   )}

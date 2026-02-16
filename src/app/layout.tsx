@@ -1,63 +1,75 @@
-
 import type { Metadata } from 'next';
 import './globals.css';
 import { Toaster } from "@/components/ui/toaster";
 import { ThemeProvider } from '@/contexts/theme-context';
 import { Inter, Space_Grotesk } from 'next/font/google';
+import { getMergedSiteData } from '@/lib/site-data';
 
 const inter = Inter({ subsets: ['latin'], variable: '--font-inter' });
 const spaceGrotesk = Space_Grotesk({ subsets: ['latin'], variable: '--font-space' });
 
-export const metadata: Metadata = {
-  title: 'Deal4Bank - Professional Financial Services | Loans, Insurance, Investment & Property',
-  description: 'Leading financial services platform offering competitive loan rates and comprehensive insurance solutions. Get quick approvals for personal loans, home loans, car loans, and complete insurance coverage.',
-  keywords: 'financial services, loans, insurance, personal loans, home loans, car loans, life insurance, health insurance, India',
-  authors: [{ name: 'Deal4Bank.com' }],
-  creator: 'Deal4Bank.com',
-  publisher: 'Deal4Bank.com',
-  formatDetection: {
-    email: false,
-    address: false,
-    telephone: false,
-  },
-  metadataBase: new URL('https://deal4bank.com'),
-  alternates: {
-    canonical: '/',
-  },
-  openGraph: {
-    title: 'deal4bank.com - Professional Financial Services',
-    description: 'Leading financial services platform offering competitive loan rates and comprehensive insurance solutions.',
-    url: 'https://deal4bank.com',
-    siteName: 'deal4bank.com',
-    images: [
-      {
-        url: 'https://picsum.photos/seed/deal4bank-og/1200/630',
-        width: 1200,
-        height: 630,
-        alt: 'deal4bank.com - Financial Services',
-      },
-    ],
-    locale: 'en_IN',
-    type: 'website',
-  },
-  twitter: {
-    card: 'summary_large_image',
-    title: 'deal4bank.com - Professional Financial Services',
-    description: 'Leading financial services platform offering competitive loan rates and comprehensive insurance solutions.',
-    images: ['https://picsum.photos/seed/deal4bank-og/1200/630'],
-  },
-  robots: {
-    index: true,
-    follow: true,
-    googleBot: {
+export async function generateMetadata(): Promise<Metadata> {
+  const siteData = await getMergedSiteData();
+  const logo = siteData?.settings?.logoUrl || 'https://picsum.photos/seed/deal-logo/100/100';
+  const name = siteData?.settings?.name || 'Deal4Bank';
+  const description = siteData?.settings?.siteDescription || 'Leading financial services platform offering competitive loan rates and comprehensive insurance solutions.';
+
+  return {
+    title: `${name} - Professional Financial Services | Loans, Insurance, Investment & Property`,
+    description: description,
+    keywords: 'financial services, loans, insurance, personal loans, home loans, car loans, life insurance, health insurance, India',
+    authors: [{ name: 'Deal4Bank.com' }],
+    creator: 'Deal4Bank.com',
+    publisher: 'Deal4Bank.com',
+    formatDetection: {
+      email: false,
+      address: false,
+      telephone: false,
+    },
+    metadataBase: new URL('https://deal4bank.com'),
+    alternates: {
+      canonical: '/',
+    },
+    icons: {
+      icon: logo,
+      shortcut: logo,
+      apple: logo,
+    },
+    openGraph: {
+      title: `${name} - Professional Financial Services`,
+      description: description,
+      url: 'https://deal4bank.com',
+      siteName: name,
+      images: [
+        {
+          url: logo,
+          width: 1200,
+          height: 630,
+          alt: `${name} - Financial Services`,
+        },
+      ],
+      locale: 'en_IN',
+      type: 'website',
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title: `${name} - Professional Financial Services`,
+      description: description,
+      images: [logo],
+    },
+    robots: {
       index: true,
       follow: true,
-      'max-video-preview': -1,
-      'max-image-preview': 'large',
-      'max-snippet': -1,
+      googleBot: {
+        index: true,
+        follow: true,
+        'max-video-preview': -1,
+        'max-image-preview': 'large',
+        'max-snippet': -1,
+      },
     },
-  },
-};
+  };
+}
 
 export default function RootLayout({
   children,

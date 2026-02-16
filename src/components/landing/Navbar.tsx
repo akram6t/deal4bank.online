@@ -1,18 +1,19 @@
-
 'use client';
 
 import Link from 'next/link';
 import { Phone } from 'lucide-react';
 import Image from 'next/image';
+import { PlaceHolderImages } from '@/lib/placeholder-images';
 
 interface NavbarProps {
   settings: any;
 }
 
 export default function Navbar({ settings }: NavbarProps) {
-  // Use dynamic settings with fallback to static values if provided data is missing
+  const defaultLogoData = PlaceHolderImages.find(img => img.id === 'default-logo');
+  
   const name = settings?.name || 'Deal4Bank';
-  const logo = settings?.logoUrl || 'https://picsum.photos/seed/deal-logo/100/100';
+  const logo = settings?.logoUrl || defaultLogoData?.imageUrl || 'https://picsum.photos/seed/deal-logo/100/100';
   const phone = settings?.phone || '9243956990';
 
   return (
@@ -27,7 +28,7 @@ export default function Navbar({ settings }: NavbarProps) {
                 width={32} 
                 height={32} 
                 alt='logo' 
-                data-ai-hint="company logo"
+                data-ai-hint={defaultLogoData?.imageHint || "company logo"}
               />
             </div>
             <Link href="/" className="text-xl font-bold font-headline tracking-tight">
